@@ -135,9 +135,11 @@ contract LogisticsPlatform {
 
     }
 
-    // Rate courier.
+    // TODO: Rate courier.
 
+    // TODO: Deposit.
 
+    // TODO: LTK Bonus.
 
-
+    
 }
