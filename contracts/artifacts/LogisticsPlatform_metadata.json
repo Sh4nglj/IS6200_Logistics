@@ -1,0 +1,304 @@
+{
+	"compiler": {
+		"version": "0.8.26+commit.8a97fa7a"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"anonymous": false,
+				"inputs": [],
+				"name": "OrderCreated",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [],
+				"name": "OrderDelivered",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [],
+				"name": "OrderTaken",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [],
+				"name": "OrderTransitting",
+				"type": "event"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_receiverAddr",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "_senderLoc",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "_receiverLoc",
+						"type": "string"
+					}
+				],
+				"name": "createOrder",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "feeManagement",
+				"outputs": [
+					{
+						"internalType": "contract FeeManagement",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "logiToken",
+				"outputs": [
+					{
+						"internalType": "contract LogiToken",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_orderID",
+						"type": "uint256"
+					},
+					{
+						"internalType": "enum LogisticsPlatform.OrderStatus",
+						"name": "_newStatus",
+						"type": "uint8"
+					}
+				],
+				"name": "modifyOrder",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "orderMap",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "orderID",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "senderAddr",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "courierAddr",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "receiverAddr",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "senderLoc",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "receiverLoc",
+						"type": "string"
+					},
+					{
+						"internalType": "enum LogisticsPlatform.OrderStatus",
+						"name": "status",
+						"type": "uint8"
+					},
+					{
+						"internalType": "uint256",
+						"name": "ethAmount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "ltkReward",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_orderID",
+						"type": "uint256"
+					}
+				],
+				"name": "takeOrder",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "userRegistry",
+				"outputs": [
+					{
+						"internalType": "contract UserRegistry",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {
+				"createOrder(address,string,string)": {
+					"notice": "Record order and calculate LTK reward. msg.sender is Sender."
+				},
+				"modifyOrder(uint256,uint8)": {
+					"notice": "Start to transit order or finish transitting. If finished, pay ETH and award LTK. msg.sender is Courier."
+				},
+				"takeOrder(uint256)": {
+					"notice": "Update order information : courier addr and status. msg.sender is Courier"
+				}
+			},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/LogisticsPlatform.sol": "LogisticsPlatform"
+		},
+		"evmVersion": "cancun",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"@openzeppelin/contracts/access/Ownable.sol": {
+			"keccak256": "0xff6d0bb2e285473e5311d9d3caacb525ae3538a80758c10649a4d61029b017bb",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://8ed324d3920bb545059d66ab97d43e43ee85fd3bd52e03e401f020afb0b120f6",
+				"dweb:/ipfs/QmfEckWLmZkDDcoWrkEvMWhms66xwTLff9DDhegYpvHo1a"
+			]
+		},
+		"@openzeppelin/contracts/interfaces/draft-IERC6093.sol": {
+			"keccak256": "0x880da465c203cec76b10d72dbd87c80f387df4102274f23eea1f9c9b0918792b",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://399594cd8bb0143bc9e55e0f1d071d0d8c850a394fb7a319d50edd55d9ed822b",
+				"dweb:/ipfs/QmbPZzgtT6LEm9CMqWfagQFwETbV1ztpECBB1DtQHrKiRz"
+			]
+		},
+		"@openzeppelin/contracts/token/ERC20/ERC20.sol": {
+			"keccak256": "0x6ef9389a2c07bc40d8a7ba48914724ab2c108fac391ce12314f01321813e6368",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://b7a5cb39b1e6df68f4dd9a5e76e853d745a74ffb3dfd7df4ae4d2ace6992a171",
+				"dweb:/ipfs/QmPbzKR19rdM8X3PLQjsmHRepUKhvoZnedSR63XyGtXZib"
+			]
+		},
+		"@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+			"keccak256": "0xe06a3f08a987af6ad2e1c1e774405d4fe08f1694b67517438b467cecf0da0ef7",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://df6f0c459663c9858b6cba2cda1d14a7d05a985bed6d2de72bd8e78c25ee79db",
+				"dweb:/ipfs/QmeTTxZ7qVk9rjEv2R4CpCwdf8UMCcRqDNMvzNxHc3Fnn9"
+			]
+		},
+		"@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol": {
+			"keccak256": "0x70f2f713b13b7ce4610bcd0ac9fec0f3cc43693b043abcb8dc40a42a726eb330",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://c13d13304ac79a83ab1c30168967d19e2203342ebbd6a9bbce4db7550522dcbf",
+				"dweb:/ipfs/QmeN5jKMN2vw5bhacr6tkg78afbTTZUeaacNHqjWt4Ew1r"
+			]
+		},
+		"@openzeppelin/contracts/utils/Context.sol": {
+			"keccak256": "0x493033a8d1b176a037b2cc6a04dad01a5c157722049bbecf632ca876224dd4b2",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://6a708e8a5bdb1011c2c381c9a5cfd8a9a956d7d0a9dc1bd8bcdaf52f76ef2f12",
+				"dweb:/ipfs/Qmax9WHBnVsZP46ZxEMNRQpLQnrdE4dK8LehML1Py8FowF"
+			]
+		},
+		"contracts/FeeManagement.sol": {
+			"keccak256": "0x1a0b774fdfaad49d642e55d94ce63f2b9fefda277da51f10016d03472d1464b2",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://1f0571181f8f5c17c68e8a1931c4357960ec86ffe606c097e05e9f5232354718",
+				"dweb:/ipfs/QmWY4qQn5pCjs9HA9pRVYarsgLEEJUV6CHF1rKLnaJTfji"
+			]
+		},
+		"contracts/LogiToken.sol": {
+			"keccak256": "0xe8c8a03f2a9dc5f690f6ed973510e1343d6064d50206ed9f1f732c414cf5557b",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://32f068f38092833a77205c72ed8e2300fcfe2c983eadf8227c2ee74f96b467c1",
+				"dweb:/ipfs/QmYC9QyEERjjFnvmvB9JqaeegkpddtTBxRCYs3nDbZQmsx"
+			]
+		},
+		"contracts/LogisticsPlatform.sol": {
+			"keccak256": "0x6e1fa74b3d1f074742686f4411eb48cbc074e37aaa2147e99a32c1441234a597",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://ec548a1d1d68307359044cde3022f44b2496fc18bbbdecbeec3dd03585a8e36b",
+				"dweb:/ipfs/QmasxdMgU1tJv7desELEKm9qBV7A8suPmrPWUfPUWpdEVC"
+			]
+		},
+		"contracts/UserRegistry.sol": {
+			"keccak256": "0xc01d74124f26adcd7aa385519f4b8f009cd5574bd4ad10870dc4fe6c4463c508",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://9b470a556a73739f979653792e1025ebd721152da04cb949ddbbdd6709ff33a1",
+				"dweb:/ipfs/QmT88265sYD8J8r1jo8WptEFCVCedjEa739gwB2L42quB3"
+			]
+		}
+	},
+	"version": 1
+}

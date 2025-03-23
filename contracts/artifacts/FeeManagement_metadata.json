@@ -1,0 +1,75 @@
+{
+	"compiler": {
+		"version": "0.8.26+commit.8a97fa7a"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "ethAmount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "string",
+						"name": "_senderLoc",
+						"type": "string"
+					},
+					{
+						"internalType": "string",
+						"name": "_receiverLoc",
+						"type": "string"
+					}
+				],
+				"name": "calculateLTKReward",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/FeeManagement.sol": "FeeManagement"
+		},
+		"evmVersion": "cancun",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/FeeManagement.sol": {
+			"keccak256": "0x4f81ca4cdba4b39b2a166002508ee88c18d5e9d47f2737261b2943cb1cff2cca",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://6bd7b031c44f2ecb0236d0541881ada24436117e4134bb4862f47f150949fad8",
+				"dweb:/ipfs/QmRMi76sTeM5KTgHVda1KNBti8vSr5Ki2PZMUneupCTxWt"
+			]
+		}
+	},
+	"version": 1
+}

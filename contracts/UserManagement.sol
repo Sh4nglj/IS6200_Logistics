@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract UserRegistry {
+contract UserManagement {
     enum Role {
         Sender, 
         Courier, 
@@ -11,29 +11,32 @@ contract UserRegistry {
     mapping(address => Role) public userRoles;
     mapping(address => bool) public isRegistered;
 
-    event UserRegistered(address user, Role role);
+    event UserRegistered(address user, Role role, string message);
 
-    function registerAsSender() external {
+    function registerAsSender() public {
         require(!isRegistered[msg.sender], "User already registered!");
 
         userRoles[msg.sender] = Role.Sender;
         isRegistered[msg.sender] = true;
-        emit UserRegistered(msg.sender, Role.Sender);
+
+        emit UserRegistered(msg.sender, Role.Sender, "Registered as Sender.");
     }
 
-    function registerAsCourier() external {
+    function registerAsCourier() public {
         require(!isRegistered[msg.sender], "User already registered!");
 
         userRoles[msg.sender] = Role.Courier;
         isRegistered[msg.sender] = true;
-        emit UserRegistered(msg.sender, Role.Courier);    
+
+        emit UserRegistered(msg.sender, Role.Courier, "Registered as Courier");    
     }
 
-    function registerAsReciever() external {
+    function registerAsReciever() public {
         require(!isRegistered[msg.sender], "User already registered!");
 
         userRoles[msg.sender] = Role.Receiver;
         isRegistered[msg.sender] = true;
-        emit UserRegistered(msg.sender, Role.Receiver);    
+
+        emit UserRegistered(msg.sender, Role.Receiver, "Registered as Receiver");    
     }
 }
