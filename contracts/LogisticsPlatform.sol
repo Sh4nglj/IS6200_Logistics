@@ -16,6 +16,14 @@ contract LogisticsPlatform {
         Cancelled
     }
 
+    enum OrderRating {
+        NotFinished, 
+        Good, 
+        Neutral, 
+        Bad, 
+        Cancelled
+    }
+
     struct Order {
         uint256 orderID;
 
@@ -27,6 +35,8 @@ contract LogisticsPlatform {
         string receiverLoc;
 
         OrderStatus status;
+        OrderRating rating;
+
         uint256 ethAmount;      // Cost of ETH.
         uint256 ltkReward;      // Reward to courier.
 
@@ -43,7 +53,10 @@ contract LogisticsPlatform {
     event OrderCreated(uint256 orderID, address senderAddr, uint256 ethAmount);
     event OrderTaken(uint256 orderID, address courierAddr);
     event OrderTransitting(uint256 orderID, OrderStatus newStatus);
-    event OrderDelivered(uint256 orderID, address courierAddr, uint256 ltkReward);
+    event OrderDelivered(uint256 orderID);
+    event OrderCancelled(uint256 orderID);
+    event OrderRated(uint256 orderID, OrderRating rating);
+    event LTKTransfered(uint256 orderID, address courierAddr, uint256 ltkReward);
 
     constructor(address _logiToken, address _userManagement, address _feeManagement) {
         logiToken = LogiToken(_logiToken);
@@ -68,8 +81,6 @@ contract LogisticsPlatform {
 
         orderCount++;
 
-        uint256 ltkReward = feeManagement.calculateLTKReward(msg.value, _senderLoc, _receiverLoc);
-
         orderMap[orderCount] = Order({
             orderID : orderCount, 
             senderAddr : msg.sender, 
@@ -78,8 +89,9 @@ contract LogisticsPlatform {
             senderLoc : _senderLoc, 
             receiverLoc : _receiverLoc, 
             status : OrderStatus.Pending, 
+            rating : OrderRating.NotFinished,
             ethAmount : msg.value, 
-            ltkReward : ltkReward
+            ltkReward : 0
         });
 
         emit OrderCreated(orderCount, msg.sender, msg.value);
@@ -124,22 +136,64 @@ contract LogisticsPlatform {
             currentOrder.status = OrderStatus.Delivered;
             
             payable(msg.sender).transfer(currentOrder.ethAmount);
-            logiToken.transfer(msg.sender, currentOrder.ltkReward);
 
-            emit OrderDelivered(_orderID, msg.sender, currentOrder.ltkReward);
+            emit OrderDelivered(_orderID);
         }
         else if (_newStatus == OrderStatus.Cancelled) {
-            // TODO
+            require(currentOrder.status == OrderStatus.Transitting, "Only transitting order can be cancelled.");
+
+            currentOrder.status = OrderStatus.Cancelled;
+            currentOrder.rating = OrderRating.Cancelled;
+
+            userManagement.penalizeCourier(msg.sender);
+
+            emit OrderCancelled(_orderID);
         }
-
-
     }
 
-    // TODO: Rate courier.
+    /**
+    Receiver rate courier after order delivered.
+    Good, Neutral, Bad
+    Then transfer courier LTK bonus.
+    msg.sender = Receiver
+    */
+    function rateCourier(uint256 _orderID, OrderRating _rating) external {
+        require(userManagement.userRoles(msg.sender) == UserManagement.Role.Receiver, "Only receiver can rate order.");
+
+        Order storage currentOrder = orderMap[_orderID];
+        currentOrder.rating = _rating;
+
+        address courierAddr = currentOrder.courierAddr;
+
+        if (_rating == OrderRating.Good) {
+            userManagement.rewardCourier(courierAddr);
+        }
+        else if (_rating == OrderRating.Bad) {
+            userManagement.penalizeCourier(courierAddr);
+        }
+
+        transferLTK(_orderID);
+
+        emit OrderRated(_orderID, _rating);
+    }
+
+    /**
+    Courier get LTK reward after order be rated.
+    */
+    function transferLTK(uint256 _orderID) private {
+        Order storage currentOrder = orderMap[_orderID];
+
+        address courierAddr = currentOrder.courierAddr;
+
+        uint256 courierReputation = userManagement.courierReputation(courierAddr);
+        uint256 ltkReward = feeManagement.calculateLTKReward(currentOrder.senderLoc, currentOrder.receiverLoc, courierReputation);
+
+        logiToken.transfer(msg.sender, ltkReward);
+        // For recording order imformation.
+        currentOrder.ltkReward = ltkReward;
+
+        emit LTKTransfered(_orderID, courierAddr, ltkReward);
+    }
 
     // TODO: Deposit.
-
-    // TODO: LTK Bonus.
-
-    
 }
