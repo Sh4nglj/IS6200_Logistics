@@ -6,12 +6,59 @@
 	"output": {
 		"abi": [
 			{
+				"anonymous": false,
 				"inputs": [
 					{
+						"indexed": false,
+						"internalType": "string",
+						"name": "message",
+						"type": "string"
+					}
+				],
+				"name": "RewardCalculated",
+				"type": "event"
+			},
+			{
+				"inputs": [],
+				"name": "BASE_REWARD",
+				"outputs": [
+					{
 						"internalType": "uint256",
-						"name": "ethAmount",
+						"name": "",
 						"type": "uint256"
-					},
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "DISTANCE_RATE",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "REPUTATION_FACTOR",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
 					{
 						"internalType": "string",
 						"name": "_senderLoc",
@@ -21,6 +68,11 @@
 						"internalType": "string",
 						"name": "_receiverLoc",
 						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_courierReputaion",
+						"type": "uint256"
 					}
 				],
 				"name": "calculateLTKReward",
@@ -63,11 +115,11 @@
 	},
 	"sources": {
 		"contracts/FeeManagement.sol": {
-			"keccak256": "0x4f81ca4cdba4b39b2a166002508ee88c18d5e9d47f2737261b2943cb1cff2cca",
+			"keccak256": "0x50dbde335d543ba752f346ad783b4d21e038deb02a65391d353b9c9a693dec3f",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://6bd7b031c44f2ecb0236d0541881ada24436117e4134bb4862f47f150949fad8",
-				"dweb:/ipfs/QmRMi76sTeM5KTgHVda1KNBti8vSr5Ki2PZMUneupCTxWt"
+				"bzz-raw://7c57d65a5ef91569447137fb754b2ff3c7a5de3393087cc9ae5de521c719518d",
+				"dweb:/ipfs/QmXjC1qAHmHn2D3MX8a1AJW4NnUuL4PE6EGuNUziTrasJw"
 			]
 		}
 	},

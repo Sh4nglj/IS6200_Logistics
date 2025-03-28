@@ -14,60 +14,59 @@ contract UserManagement {
     uint8 public constant REWARD_VALUE = 5;
     uint8 public constant PENALTY_VALUE = 10;
 
-    mapping(address => Role) public userRoles;
-    mapping(address => bool) public isRegistered;
-    // Default reputaion is 0. Increased by finishing a order with higher rate.
-    mapping(address => uint8) public courierReputation;
+    mapping(address => Role)    public userRoles;
+    mapping(address => bool)    public isRegistered;
+    mapping(address => uint8)   public courierReputation;
 
     event UserRegistered(address user, Role role, string message);
-    event courierRewarded(address courierAddr);
-    event courierPenalized(address courierAddr);
+    event CourierRewarded(address courierAddr);
+    event CourierPenalized(address courierAddr);
 
-    function registerAsSender() external  {
-        require(!isRegistered[msg.sender], "User already registered!");
+    function registerAsSender(address _courierAddr) external  {
+        require(!isRegistered[_courierAddr], "User already registered!");
 
-        userRoles[msg.sender] = Role.Sender;
-        isRegistered[msg.sender] = true;
+        userRoles[_courierAddr] = Role.Sender;
+        isRegistered[_courierAddr] = true;
 
-        emit UserRegistered(msg.sender, Role.Sender, "Registered as Sender.");
+        emit UserRegistered(_courierAddr, Role.Sender, "Registered as Sender.");
     }
 
-    function registerAsCourier() external  {
-        require(!isRegistered[msg.sender], "User already registered!");
+    function registerAsReciever(address _courierAddr) external  {
+        require(!isRegistered[_courierAddr], "User already registered!");
 
-        userRoles[msg.sender] = Role.Courier;
-        isRegistered[msg.sender] = true;
-        courierReputation[msg.sender] = 0;
+        userRoles[_courierAddr] = Role.Receiver;
+        isRegistered[_courierAddr] = true;
 
-        emit UserRegistered(msg.sender, Role.Courier, "Registered as Courier");    
+        emit UserRegistered(_courierAddr, Role.Receiver, "Registered as Receiver");    
     }
 
-    function registerAsReciever() external  {
-        require(!isRegistered[msg.sender], "User already registered!");
+    function registerAsCourier(address _courierAddr) external  {
+        require(!isRegistered[_courierAddr], "User already registered!");
 
-        userRoles[msg.sender] = Role.Receiver;
-        isRegistered[msg.sender] = true;
+        userRoles[_courierAddr] = Role.Courier;
+        isRegistered[_courierAddr] = true;
+        courierReputation[_courierAddr] = DEFAULT_REPUTATION;
 
-        emit UserRegistered(msg.sender, Role.Receiver, "Registered as Receiver");    
+        emit UserRegistered(_courierAddr, Role.Courier, "Registered as Courier");    
     }
 
     function rewardCourier(address _courierAddr) external {
-        uint8 currentReputation = courierReputation[_courierAddr];
-
-        if (currentReputation + REWARD_VALUE <= MAX_REPUTATION) {
-            currentReputation += REWARD_VALUE;
+        require(userRoles[_courierAddr] == Role.Courier, "Only courier can be rewarded!");
+        
+        if (courierReputation[_courierAddr] + REWARD_VALUE <= MAX_REPUTATION) {
+            courierReputation[_courierAddr] += REWARD_VALUE;
         }
 
-        emit courierRewarded(_courierAddr);
+        emit CourierRewarded(_courierAddr);
     }
 
     function penalizeCourier(address _courierAddr) external {
-        uint8 currentReputation = courierReputation[_courierAddr];
-
-        if (currentReputation - PENALTY_VALUE >= MIN_REPUTATION) {
-            currentReputation -= PENALTY_VALUE;
+        require(userRoles[_courierAddr] == Role.Courier, "Only courier can be penalized!");
+        
+        if (courierReputation[_courierAddr] - PENALTY_VALUE >= MIN_REPUTATION) {
+            courierReputation[_courierAddr] -= PENALTY_VALUE;
         }
 
-        emit courierPenalized(_courierAddr);
+        emit CourierPenalized(_courierAddr);
     }
 }

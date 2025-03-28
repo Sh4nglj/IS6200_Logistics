@@ -43,10 +43,11 @@ contract LogisticsPlatform {
         // TODO: Imformation of Item delevered.
     }
 
-    LogiToken public logiToken;
-    UserManagement public userManagement;
-    FeeManagement public feeManagement;
-    uint256 private orderCount;
+    LogiToken       public logiToken;
+    UserManagement  public userManagement;
+    FeeManagement   public feeManagement;
+    
+    uint256 private totalOrderCount;
 
     mapping(uint => Order) public orderMap;
 
@@ -67,9 +68,6 @@ contract LogisticsPlatform {
     /**
     Record order and calculate LTK reward.
     msg.sender is Sender.
-
-    TODO: 
-    Now orderID is order count. Order Count never be released.
     */
     function createOrder( 
         address _receiverAddr, 
@@ -79,10 +77,10 @@ contract LogisticsPlatform {
         require(userManagement.userRoles(msg.sender) == UserManagement.Role.Sender, "Only sender can create order.");
         require(msg.value > 0, "ETH payment required.");
 
-        orderCount++;
+        totalOrderCount++;
 
-        orderMap[orderCount] = Order({
-            orderID : orderCount, 
+        orderMap[totalOrderCount] = Order({
+            orderID : totalOrderCount, 
             senderAddr : msg.sender, 
             courierAddr : address(0),
             receiverAddr : _receiverAddr, 
@@ -94,7 +92,7 @@ contract LogisticsPlatform {
             ltkReward : 0
         });
 
-        emit OrderCreated(orderCount, msg.sender, msg.value);
+        emit OrderCreated(totalOrderCount, msg.sender, msg.value);
     }
 
     /**
@@ -153,7 +151,7 @@ contract LogisticsPlatform {
 
     /**
     Receiver rate courier after order delivered.
-    Good, Neutral, Bad
+    Rate by Good, Neutral, Bad
     Then transfer courier LTK bonus.
     msg.sender = Receiver
     */
