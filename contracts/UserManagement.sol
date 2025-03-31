@@ -17,6 +17,7 @@ contract UserManagement {
     mapping(address => Role)    public userRoles;
     mapping(address => bool)    public isRegistered;
     mapping(address => uint8)   public courierReputation;
+    mapping(address => uint256) private balance;
 
     event UserRegistered(address user, Role role, string message);
     event CourierRewarded(address courierAddr);

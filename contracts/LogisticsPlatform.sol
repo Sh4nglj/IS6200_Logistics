@@ -6,6 +6,15 @@ import "./UserManagement.sol";
 import "./FeeManagement.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/**
+TODO:
+1. ETH Transfer from sender/receiver.
+2. LTK Transfer Cache
+
+*/
+
+
+
 contract LogisticsPlatform {
 
     enum OrderStatus {
@@ -187,6 +196,7 @@ contract LogisticsPlatform {
         uint256 ltkReward = feeManagement.calculateLTKReward(currentOrder.senderLoc, currentOrder.receiverLoc, courierReputation);
 
         logiToken.transfer(msg.sender, ltkReward);
+
         // For recording order imformation.
         currentOrder.ltkReward = ltkReward;
 
