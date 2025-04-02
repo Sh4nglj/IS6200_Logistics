@@ -22,6 +22,7 @@ contract LogisticsPlatform {
         Taken, 
         Transitting, 
         Delivered, 
+        Finished, 
         Cancelled
     }
 
@@ -121,6 +122,23 @@ contract LogisticsPlatform {
     }
 
     /**
+    Receiver receive order. 
+    Transfer ETH
+    msg.sender is Receiver
+    */
+    function receiverOrder(uint _orderID, OrderRating _rating) external {
+        require(userManagement.userRoles(msg.sender) == UserManagement.Role.Receiver, "Only receiver can receive order.");
+
+        Order storage currentOrder = orderMap[_orderID];
+        require(currentOrder.status == OrderStatus.Delivered, "Only delivered order can be transitted.");
+
+        currentOrder.status = OrderStatus.Finished;
+        payable(currentOrder.courierAddr).transfer(currentOrder.ethAmount);
+
+        rateCourier(_orderID, _rating);
+    } 
+
+    /**
     Start to transit order or finish transitting.
     If finished, pay ETH and award LTK.
     msg.sender is Courier.
@@ -141,8 +159,6 @@ contract LogisticsPlatform {
             require(currentOrder.status == OrderStatus.Transitting, "Only transitting order can be delivered.");
 
             currentOrder.status = OrderStatus.Delivered;
-            
-            payable(msg.sender).transfer(currentOrder.ethAmount);
 
             emit OrderDelivered(_orderID);
         }
@@ -153,6 +169,7 @@ contract LogisticsPlatform {
             currentOrder.rating = OrderRating.Cancelled;
 
             userManagement.penalizeCourier(msg.sender);
+            payable(currentOrder.senderAddr).transfer(currentOrder.ethAmount);
 
             emit OrderCancelled(_orderID);
         }
@@ -164,7 +181,7 @@ contract LogisticsPlatform {
     Then transfer courier LTK bonus.
     msg.sender = Receiver
     */
-    function rateCourier(uint256 _orderID, OrderRating _rating) external {
+    function rateCourier(uint256 _orderID, OrderRating _rating) private {
         require(userManagement.userRoles(msg.sender) == UserManagement.Role.Receiver, "Only receiver can rate order.");
 
         Order storage currentOrder = orderMap[_orderID];
@@ -195,7 +212,7 @@ contract LogisticsPlatform {
         uint256 courierReputation = userManagement.courierReputation(courierAddr);
         uint256 ltkReward = feeManagement.calculateLTKReward(currentOrder.senderLoc, currentOrder.receiverLoc, courierReputation);
 
-        logiToken.transfer(msg.sender, ltkReward);
+        logiToken.transfer(currentOrder.courierAddr, ltkReward);
 
         // For recording order imformation.
         currentOrder.ltkReward = ltkReward;
@@ -204,4 +221,7 @@ contract LogisticsPlatform {
     }
 
     // TODO: Deposit.
+    function deposit() public {
+
+    }
 }
