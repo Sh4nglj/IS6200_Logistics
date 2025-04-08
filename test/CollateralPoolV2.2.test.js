@@ -30,7 +30,7 @@ describe("CollateralPool - 基础功能测试", function () {
   });
 
   it("抵押与销毁代币", async () => {
-    const depositAmount = ethers.parseEther("1.0");
+    const depositAmount = ethers.parseEther("1000.0");
     
     // 执行存款
     await expect(
