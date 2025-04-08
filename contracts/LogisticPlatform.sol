@@ -29,13 +29,13 @@ contract LogisticPlatform {
     }
 
     struct OrderTimestamp {
-        uint40 createdAt;         // 创建时间戳
-        uint40 confirmedAt;       // 确认时间戳
-        uint40 transitBeginAt;       // 开始运输时间
-        uint40 transitEndAt;       // 结束运输时间
-        uint40 receivedAt;
-        uint40 finishedAt;        // 完成时间戳
-        uint40 canceledAt;        // 取消时间戳
+        uint256 createdAt;         // 创建时间戳
+        uint256 confirmedAt;       // 确认时间戳
+        uint256 transitBeginAt;       // 开始运输时间
+        uint256 transitEndAt;       // 结束运输时间
+        uint256 receivedAt;
+        uint256 finishedAt;        // 完成时间戳
+        uint256 canceledAt;        // 取消时间戳
     }
 
     // 订单信息 
@@ -130,7 +130,17 @@ contract LogisticPlatform {
         ItemInfo memory _itemInfo
     ) external {
         orderCounter++;
-        OrderTimestamp memory _orderTimestamp = getTimestamp();
+
+        OrderTimestamp memory _orderTimestamp = OrderTimestamp({
+            createdAt: block.timestamp,
+            confirmedAt: 0,
+            transitBeginAt: 0,
+            transitEndAt: 0,
+            receivedAt: 0,
+            finishedAt: 0,
+            canceledAt: 0   
+        });
+
         orders[orderCounter] = Order({
             id: orderCounter,
             sender: msg.sender,
@@ -252,6 +262,7 @@ contract LogisticPlatform {
 
         orders[orderId].status = OrderStatus.CourierConfirmed;
         orders[orderId].orderTimestamp.confirmedAt = uint40(block.timestamp);
+
 
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.CourierConfirmed);
     }
