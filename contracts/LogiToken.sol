@@ -13,6 +13,11 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     // mapping(address => uint256) private _redeemAllowance;  // 可赎回的代币
     bool public paused;
 
+    event DebugLog(uint256 val0, uint256 val1);
+    event TokensLocked(address indexed user, uint256 amount);
+    event TokensFreed(address indexed user, uint256 amount);
+    event TokensBurned(address indexed user, uint256 amount);
+
     modifier onlyCollateralPool() {
         require(msg.sender == address(collateralPool), "Unauthorized");
         _;
@@ -38,11 +43,6 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         require(_pool != address(0), "invalid address");
         _transferOwnership(_pool);
     }
-
-    event DebugLog(uint256 val0, uint256 val1);
-    event TokensLocked(address indexed user, uint256 amount);
-    event TokensFreed(address indexed user, uint256 amount);
-    event TokensBurned(address indexed user, uint256 amount);
 
     // Override transfer functions
     function transfer(address to, uint256 value) public override onlyCollateralPool returns (bool) {
