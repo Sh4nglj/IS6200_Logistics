@@ -87,8 +87,8 @@ contract LogisticPlatform {
         ItemInfo memory _itemInfo
     ) external {
         // 新增抵押检查和锁定抵押品
-        // require(logiToken.getFreeBalance(msg.sender) >= _orderParam.orderValue, "Insufficient collateral");
-        // collateralPool.lockToken(msg.sender, _orderParam.orderValue);
+        require(logiToken.getFreeBalance(msg.sender) >= _orderParam.orderValue, "Insufficient collateral");
+        collateralPool.lockToken(msg.sender, _orderParam.orderValue);
 
         orderCounter++;
         OrderTimestamp memory _orderTimestamp = OrderTimestamp({

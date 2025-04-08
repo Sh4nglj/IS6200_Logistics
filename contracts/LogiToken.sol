@@ -62,11 +62,13 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     }
 
     function lockToken(address user, uint256 amount) external onlyCollateralPool {
+        require(freeBalances[user] >= amount, "Insufficient free tokens");
         lockedBalances[user] += amount;
         freeBalances[user] -= amount;
     }
 
     function freeToken(address user, uint256 amount) external onlyCollateralPool {
+        require(lockedBalances[user] >= amount, "Insufficient locked tokens");
         lockedBalances[user] -= amount;
         freeBalances[user] += amount;
     }
