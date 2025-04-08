@@ -85,6 +85,7 @@ contract LogisticPlatform {
         // collateralPool.lockCollateral(msg.sender, _orderParam.depositAmount);
 
         orderCounter++;
+        
         OrderTimestamp memory _orderTimestamp = OrderTimestamp({
             createdAt: block.timestamp,
             confirmedAt: 0,
@@ -94,6 +95,7 @@ contract LogisticPlatform {
             canceledAt: 0,
             finishedAt: 0
         });
+
         orders[orderCounter] = Order({
             id: orderCounter,
             sender: msg.sender,
@@ -111,160 +113,154 @@ contract LogisticPlatform {
     }
 
     function modifyOrder(
-        uint256 orderId,
+        uint256 _orderId,
         OrderParam memory _orderParam, 
         ItemInfo memory _itemInfo
     ) external {
-        Order storage oldOrder = orders[orderId];
-        require(msg.sender == oldOrder.sender, "Only sender can modify");
-        require(oldOrder.status == OrderStatus.Created, "Order can not be modified now.");
+        Order storage currentOrder = orders[_orderId];
+        require(currentOrder.status == OrderStatus.Created, "Order can not be modified now.");
+        require(msg.sender == currentOrder.sender, "Only sender can modify");
 
-        Order memory newOrder = Order({
-            id: orderId,  // Correct struct field name (was mislabeled as orderCounter)
-            sender: oldOrder.sender,
-            courier: oldOrder.courier,
-            receiver: oldOrder.receiver,
-            orderTimestamp: oldOrder.orderTimestamp,
-            status: oldOrder.status,
-            orderParam: _orderParam,
-            item: _itemInfo,
-            isRated: oldOrder.isRated
-        });
-        
-        orders[orderId] = newOrder;
-        emit OrderModified(orderId, msg.sender);
+        currentOrder.orderParam = _orderParam;
+        currentOrder.item = _itemInfo;
+
+        emit OrderModified(_orderId, msg.sender);
     }
 
+    // Sender cancel order
     function cancelOrder(
-        uint256 orderId
+        uint256 _orderId
     ) external {
-        require(msg.sender == orders[orderId].sender, "Only sender can cancel");
+        require(msg.sender == orders[_orderId].sender, "Only sender can cancel");
         require(
-            orders[orderId].status == OrderStatus.Created || orders[orderId].status == OrderStatus.SenderConfirmed || 
-            orders[orderId].status == OrderStatus.CourierConfirmed,
+            orders[_orderId].status == OrderStatus.Created || orders[_orderId].status == OrderStatus.SenderConfirmed || 
+            orders[_orderId].status == OrderStatus.CourierConfirmed,
             "Order can only be cancelled under OrderStatus 'Created' or 'Confirmed'."
         );
-        orders[orderId].status = OrderStatus.Cancelled;
-        orders[orderId].orderTimestamp.canceledAt = block.timestamp;
-        emit OrderCancelled(orderId, msg.sender);
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.Cancelled);
+
+        orders[_orderId].status = OrderStatus.Cancelled;
+        orders[_orderId].orderTimestamp.canceledAt = block.timestamp;
+
+        emit OrderCancelled(_orderId, msg.sender);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.Cancelled);
     }
 
     function confirmOrder(
-        uint256 orderId,
-        address courier
+        uint256 _orderId,
+        address _courier
     ) external {
-        require(msg.sender == orders[orderId].sender, "Only the sender can confirm the order.");
-        require(orders[orderId].status == OrderStatus.Created, "Order can only be confirmed under OrderStatus 'Created'.");
-        require(courier != address(0), "Courier address is invalid");
+        require(msg.sender == orders[_orderId].sender, "Only the sender can confirm the order.");
+        require(orders[_orderId].status == OrderStatus.Created, "Order can only be confirmed under OrderStatus 'Created'.");
+        require(_courier != address(0), "Courier address is invalid");
 
-        orders[orderId].status = OrderStatus.SenderConfirmed;
-        orders[orderId].courier = courier;
+        orders[_orderId].status = OrderStatus.SenderConfirmed;
+        orders[_orderId].courier = _courier;
 
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.SenderConfirmed);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.SenderConfirmed);
     }
 
     function sendDelivery(
-        uint256 orderId
+        uint256 _orderId
     ) external {
-        require(msg.sender == orders[orderId].sender, "Only the sender can send the delivery.");
-        require(orders[orderId].status == OrderStatus.CourierConfirmed, "Order can only be confirmed under OrderStatus 'CourierConfirmed'.");
+        require(msg.sender == orders[_orderId].sender, "Only the sender can send the delivery.");
+        require(orders[_orderId].status == OrderStatus.CourierConfirmed, "Order can only be confirmed under OrderStatus 'CourierConfirmed'.");
 
-        orders[orderId].status = OrderStatus.SenderDelivered;
+        orders[_orderId].status = OrderStatus.SenderDelivered;
 
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.SenderDelivered);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.SenderDelivered);
     }
 
     function finishOrder(
-        uint256 orderId
+        uint256 _orderId
     ) external {
-        require(msg.sender == orders[orderId].sender, "Only the sender can finish the order.");
-        require(orders[orderId].status == OrderStatus.ReceiverReceived, "Order status must be ReceiverReceived.");
+        require(msg.sender == orders[_orderId].sender, "Only the sender can finish the order.");
+        require(orders[_orderId].status == OrderStatus.ReceiverReceived, "Order status must be ReceiverReceived.");
 
-        orders[orderId].status = OrderStatus.Finished;
-        orders[orderId].orderTimestamp.finishedAt = block.timestamp;
+        orders[_orderId].status = OrderStatus.Finished;
+        orders[_orderId].orderTimestamp.finishedAt = block.timestamp;
 
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.Finished);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.Finished);
         emit CreditChanged(msg.sender, 1);  // 完成订单给发送者和运输者增加较小的评分
-        emit CreditChanged(orders[orderId].courier, 1);
+        emit CreditChanged(orders[_orderId].courier, 1);
     }
 
     function rateCourier(
-        uint256 orderId,
-        int64 rating,
-        string memory comment
+        uint256 _orderId,
+        int64 _rating,
+        string memory _comment
     ) external {
-        require(msg.sender == orders[orderId].sender, "Only the sender can rate the courier.");
-        require(orders[orderId].status == OrderStatus.Finished, "Order status must be Finished.");
-        require(!orders[orderId].isRated, "Order has already been rated.");
-        require(rating >= 1 && rating <= 10, "Rating must be between 1 and 5.");
+        require(msg.sender == orders[_orderId].sender, "Only the sender can rate the courier.");
+        require(orders[_orderId].status == OrderStatus.Finished, "Order status must be Finished.");
+        require(!orders[_orderId].isRated, "Order has already been rated.");
+        require(_rating >= 1 && _rating <= 10, "Rating must be between 1 and 5.");
 
-        orders[orderId].isRated = true;
+        orders[_orderId].isRated = true;
 
-        emit OrderRated(orderId, msg.sender, rating, comment);
+        emit OrderRated(_orderId, msg.sender, _rating, _comment);
         emit CreditChanged(msg.sender, 1);
-        emit CreditChanged(orders[orderId].courier, rating);
+        emit CreditChanged(orders[_orderId].courier, _rating);
     }
 
     // Courier relative functions
     function takeOrder(
-        uint256 orderId
+        uint256 _orderId
     ) external {
-        require(msg.sender == orders[orderId].courier, "Only the courier can take the order.");
-        require(orders[orderId].status == OrderStatus.SenderConfirmed, "Order is not confirmed by sender.");
+        require(msg.sender == orders[_orderId].courier, "Only the courier can take the order.");
+        require(orders[_orderId].status == OrderStatus.SenderConfirmed, "Order is not confirmed by sender.");
 
-        orders[orderId].status = OrderStatus.CourierConfirmed;
-        orders[orderId].orderTimestamp.confirmedAt = block.timestamp;
+        orders[_orderId].status = OrderStatus.CourierConfirmed;
+        orders[_orderId].orderTimestamp.confirmedAt = block.timestamp;
 
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.CourierConfirmed);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.CourierConfirmed);
     }
 
     function refuseOrder(
-        uint256 orderId
+        uint256 _orderId
     ) external {
-        require(msg.sender == orders[orderId].courier, "Only courier can refuse");
-        require(orders[orderId].status == OrderStatus.CourierConfirmed, "Order can only be cancelled under OrderStatus 'Confirmed'.");
-        orders[orderId].status = OrderStatus.Created;
-        orders[orderId].courier = address(0);
-        orders[orderId].orderTimestamp.confirmedAt = 0;
+        require(msg.sender == orders[_orderId].courier, "Only courier can refuse");
+        require(orders[_orderId].status == OrderStatus.CourierConfirmed, "Order can only be cancelled under OrderStatus 'Confirmed'.");
+        
+        orders[_orderId].status = OrderStatus.Created;
+        orders[_orderId].courier = address(0);
+        orders[_orderId].orderTimestamp.confirmedAt = 0;
 
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.Created);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.Created);
     }
 
     function takeDelivery(
-        uint256 orderId
+        uint256 _orderId
     ) external {
-        require(msg.sender == orders[orderId].courier, "Invalid courier");
-        require(orders[orderId].status == OrderStatus.SenderDelivered, "Invalid order status");
+        require(msg.sender == orders[_orderId].courier, "Invalid courier");
+        require(orders[_orderId].status == OrderStatus.SenderDelivered, "Invalid order status");
 
-        orders[orderId].status = OrderStatus.InTransit;
-        orders[orderId].orderTimestamp.transitBeginAt = block.timestamp;
+        orders[_orderId].status = OrderStatus.InTransit;
+        orders[_orderId].orderTimestamp.transitBeginAt = block.timestamp;
 
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.InTransit);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.InTransit);
     }
 
     function compeleteDelivery(
-        uint256 orderId
+        uint256 _orderId
     ) external {
-        require(msg.sender == orders[orderId].courier, "Invalid courier");
-        require(orders[orderId].status == OrderStatus.InTransit, "Invalid order status");
+        require(msg.sender == orders[_orderId].courier, "Invalid courier");
+        require(orders[_orderId].status == OrderStatus.InTransit, "Invalid order status");
 
-        orders[orderId].status = OrderStatus.CourierDelivered;
-        orders[orderId].orderTimestamp.transitEndAt = block.timestamp;
+        orders[_orderId].status = OrderStatus.CourierDelivered;
+        orders[_orderId].orderTimestamp.transitEndAt = block.timestamp;
 
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.CourierDelivered);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.CourierDelivered);
     }
 
     // receiver相关代码
     function receiveDelivery(
-        uint256 orderId
+        uint256 _orderId
     ) external {
-        require(msg.sender == orders[orderId].receiver, "Invalid receiver");
-        require(orders[orderId].status == OrderStatus.CourierDelivered, "Invalid order status");
+        require(msg.sender == orders[_orderId].receiver, "Invalid receiver");
+        require(orders[_orderId].status == OrderStatus.CourierDelivered, "Invalid order status");
 
-        orders[orderId].status = OrderStatus.ReceiverReceived;
-        orders[orderId].orderTimestamp.receivedAt = block.timestamp;
+        orders[_orderId].status = OrderStatus.ReceiverReceived;
+        orders[_orderId].orderTimestamp.receivedAt = block.timestamp;
 
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.ReceiverReceived);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.ReceiverReceived);
     }
 }
