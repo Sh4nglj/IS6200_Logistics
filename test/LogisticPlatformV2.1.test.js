@@ -181,11 +181,8 @@ describe("LogisticPlatform - 取消订单测试", function () {
   let platform;
   let sender, receiver, courier, otherUser;
 
-  before(async () => {
-    [, sender, courier, receiver, otherUser] = await ethers.getSigners();
-  });
-
   beforeEach(async () => {
+    [, sender, courier, receiver, otherUser] = await ethers.getSigners();
     const LogisticPlatform = await ethers.getContractFactory("LogisticPlatform");
     platform = await LogisticPlatform.deploy();
 
@@ -212,36 +209,53 @@ describe("LogisticPlatform - 取消订单测试", function () {
       { action: null, statusName: "Created" }, // 初始状态
       {
         action: async () => {
-          await platform.connect(sender).confirmOrder(1, courier.address);
+          await platform.connect(sender).confirmOrder(2, courier.address);
         },
         statusName: "SenderConfirmed"
       },
       {
         action: async () => {
-          await platform.connect(sender).confirmOrder(1, courier.address);
-          await platform.connect(courier).takeOrder(1);
+          await platform.connect(sender).confirmOrder(3, courier.address);
+          await platform.connect(courier).takeOrder(3);
         },
         statusName: "CourierConfirmed"
       }
     ];
 
+    i = 0;
     for (const { action, statusName } of validStatuses) {
+      i++;
+      await platform.connect(sender).createOrder(
+        receiver.address,
+        {
+          coarsePickup: "上海总仓",
+          coarseDropoff: "北京分站",
+          depositAmount: ethers.parseEther("0.5"),
+          orderValue: ethers.parseEther("5.0")
+        },
+        {
+          volume: 10000,
+          weight: 8000,
+          description: "测试货物"
+        }
+      );
+
       // 执行前置状态转换
       if (action) await action();
 
       // 执行取消操作
-      const tx = await platform.connect(sender).cancelOrder(1);
+      const tx = await platform.connect(sender).cancelOrder(i);
 
       // 验证状态
-      const order = await platform.orders(1);
+      const order = await platform.orders(i);
       expect(order.status).to.equal(8); // Cancelled状态索引为8
 
       // 验证事件
       await expect(tx)
         .to.emit(platform, "OrderCancelled")
-        .withArgs(1, sender.address)
+        .withArgs(i, sender.address)
         .and.to.emit(platform, "OrderStatusChanged")
-        .withArgs(1, sender.address, 8);
+        .withArgs(i, sender.address, 8);
     }
   });
 

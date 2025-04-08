@@ -10,6 +10,7 @@ contract CollateralPool {
     LogiToken public token;
     // Add platform reference
     address public platform;
+    address private owner;
 
     event Deposited(address indexed user, uint256 amount);
     event Redeemed(address indexed user, uint256 amount);
@@ -44,5 +45,25 @@ contract CollateralPool {
         require(success, "Transfer failed");
 
         emit Redeemed(msg.sender, amount);
+    }
+
+    function settle(address sender, address courier, uint256 amount) external onlyPlatform{
+        token.freeToken(sender, amount);
+        uint256 token_courier = (amount) * 800 / 1000;
+        uint256 token_platform = (amount) * 175 / 1000;
+        uint256 token_owner = (amount) * 25 / 1000;
+
+        token.transferFrom(sender, courier, token_courier);
+        token.transferFrom(sender, owner, token_platform);
+        token.transferFrom(sender, address(this), token_owner);
+    }
+
+    // 用于platform中业务流程的调用
+    function lockToken(address user, uint256 amount) external {  // 不用onlyPlatform, 
+        token.lockToken(user, amount);
+    }
+
+    function freeToken(address user, uint256 amount) external   { // onlyPlatform
+        token.freeToken(user, amount);
     }
 }

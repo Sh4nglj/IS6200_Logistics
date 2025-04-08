@@ -2,13 +2,19 @@
 pragma solidity ^0.8.20;
 
 import "./CollateralPool.sol";
+import "./LogiToken.sol";
 
 contract LogisticPlatform {
     CollateralPool public collateralPool;
+    LogiToken public logiToken;
     
     // 修改构造函数或添加初始化方法
     function setCollateralPool(address poolAddress) external {
         collateralPool = CollateralPool(poolAddress);
+    }
+
+    function setLogiToken(address tokenAddress) external {
+        logiToken = LogiToken(tokenAddress);
     }
     
 
@@ -18,7 +24,7 @@ contract LogisticPlatform {
         SenderConfirmed,   // sender已确认
         CourierConfirmed,  // courier已确认
         SenderDelivered, // sender已发货
-        InTransit,   // 运输中
+        InTransit,   // 运输中                  
         CourierDelivered,   // 已送达
         ReceiverReceived,   // 收货人已收到
         Finished,    // 已完成
@@ -26,7 +32,7 @@ contract LogisticPlatform {
     }
 
     // 订单结构体（核心数据结构）
-    struct Order {
+    struct Order {                  
         uint256 id;                // 订单ID
         address sender;            // 发货人地址
         address courier;           // 承运人地址（初始为0）
@@ -81,8 +87,8 @@ contract LogisticPlatform {
         ItemInfo memory _itemInfo
     ) external {
         // 新增抵押检查和锁定抵押品
-        // require(collateralPool.freeCollateral(msg.sender) >= _orderParam.depositAmount, "Insufficient collateral");
-        // collateralPool.lockCollateral(msg.sender, _orderParam.depositAmount);
+        // require(logiToken.getFreeBalance(msg.sender) >= _orderParam.orderValue, "Insufficient collateral");
+        // collateralPool.lockToken(msg.sender, _orderParam.orderValue);
 
         orderCounter++;
         OrderTimestamp memory _orderTimestamp = OrderTimestamp({
@@ -184,6 +190,9 @@ contract LogisticPlatform {
         orders[orderId].status = OrderStatus.Finished;
         orders[orderId].orderTimestamp.finishedAt = block.timestamp;
 
+        // collateralPool.freeToken(orders[orderId].courier, orders[orderId].orderParam.depositAmount);
+        // collateralPool.settle(orders[orderId].sender, orders[orderId].courier, orders[orderId].orderParam.orderValue);
+
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.Finished);
         emit CreditChanged(msg.sender, 1);  // 完成订单给发送者和运输者增加较小的评分
         emit CreditChanged(orders[orderId].courier, 1);
@@ -212,6 +221,8 @@ contract LogisticPlatform {
     ) external {
         require(msg.sender == orders[orderId].courier, "Only the courier can take the order.");
         require(orders[orderId].status == OrderStatus.SenderConfirmed, "Order is not confirmed by sender.");
+        // require(logiToken.getFreeBalance(msg.sender) >= orders[orderId].orderParam.depositAmount, "Insufficient collateral");
+        // collateralPool.lockToken(msg.sender, orders[orderId].orderParam.depositAmount);
 
         orders[orderId].status = OrderStatus.CourierConfirmed;
         orders[orderId].orderTimestamp.confirmedAt = block.timestamp;

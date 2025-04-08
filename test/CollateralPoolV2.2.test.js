@@ -80,4 +80,66 @@ describe("CollateralPool - 基础功能测试", function () {
     expect(await token.getFreeBalance(user.address)).to.equal(restDepositAmount);
     expect(await token.balanceOf(user.address)).to.equal(restDepositAmount);
   });
+
+  it("多次deposit多次redeem", async () => {
+    const depositAmount0 = 5000;
+    const redeemAmount0 = 2500;
+    const depositAmount1 = 1200;
+    const depositAmount2 = 1700;
+    const redeemAmount1 = 5400;
+    const depositAmount3 = 3000;
+
+    await expect(pool.connect(user).deposit({ value: depositAmount0 })).to.changeEtherBalance(user, -depositAmount0);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0);
+
+    await expect(pool.connect(user).redeem(redeemAmount0)).to.changeEtherBalance(user, redeemAmount0);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 - redeemAmount0);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0 - redeemAmount0);
+    
+    await expect(pool.connect(user).deposit({ value: depositAmount1 })).to.changeEtherBalance(user, -depositAmount1);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 - redeemAmount0 + depositAmount1);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0 - redeemAmount0 + depositAmount1);
+    
+    await expect(pool.connect(user).deposit({ value: depositAmount2 })).to.changeEtherBalance(user, -depositAmount2);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 - redeemAmount0 + depositAmount1 + depositAmount2);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0 - redeemAmount0 + depositAmount1 + depositAmount2);
+
+    await expect(pool.connect(user).redeem(redeemAmount1)).to.changeEtherBalance(user, redeemAmount1);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 - redeemAmount0 + depositAmount1 + depositAmount2 - redeemAmount1);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0 - redeemAmount0 + depositAmount1 + depositAmount2 - redeemAmount1);
+
+    await expect(pool.connect(user).deposit({ value: depositAmount3 })).to.changeEtherBalance(user, -depositAmount3);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 - redeemAmount0 + depositAmount1 + depositAmount2 - redeemAmount1 + depositAmount3);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0 - redeemAmount0 + depositAmount1 + depositAmount2 - redeemAmount1 + depositAmount3);
+  });
+
+  it("redeem剩余不足", async () => {
+    const depositAmount0 = 1000;
+    const lockAmount0 = 300;
+    const redeemAmount0 = 800;
+    const freeAmount0 = 200;
+    const redeemAmount1 = 800;
+
+    await expect(pool.connect(user).deposit({ value: depositAmount0 })).to.changeEtherBalance(user, -depositAmount0);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0);
+
+    await pool.connect(user).lockToken(user.address, lockAmount0);
+    expect(await token.getLockedBalance(user.address)).to.equal(lockAmount0);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 - lockAmount0);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0);
+
+    // expect(await pool.connect(user).redeem(redeemAmount0)).to.be.revertedWith("Insufficient free tokens");
+
+    await pool.connect(user).freeToken(user.address, freeAmount0);
+    expect(await token.getLockedBalance(user.address)).to.equal(lockAmount0 - freeAmount0);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 - lockAmount0 + freeAmount0);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0);
+
+    await pool.connect(user).redeem(redeemAmount1);
+    expect(await token.getLockedBalance(user.address)).to.equal(lockAmount0 - freeAmount0);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 - lockAmount0 + freeAmount0 - redeemAmount1);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0 - redeemAmount1);
+  });
 });

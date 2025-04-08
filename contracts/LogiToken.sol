@@ -34,8 +34,6 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         _transferOwnership(_pool);
     }
 
-    event DebugLog(uint256 val0, uint256 val1);
-
     // Override transfer functions
     function transfer(address to, uint256 value) public override onlyCollateralPool returns (bool) {
         return super.transfer(to, value);
