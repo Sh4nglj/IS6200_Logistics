@@ -2,7 +2,9 @@
 pragma solidity ^0.8.20;
 
 import "./LogiToken.sol";
+// import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+// contract CollateralPool is ReentrancyGuard {
 contract CollateralPool {
     // Add token reference
     LogiToken public token;
@@ -13,6 +15,7 @@ contract CollateralPool {
     mapping(address => uint256) public lockedCollateral;
 
     event Deposited(address indexed user, uint256 amount);
+    event Redeemed(address indexed user, uint256 amount);
     
     // Add modifier
     modifier onlyPlatform() {
@@ -31,6 +34,28 @@ contract CollateralPool {
         freeCollateral[msg.sender] += msg.value;
         token.mint(msg.sender, msg.value);
         emit Deposited(msg.sender, msg.value);
+    }
+
+    // function redeem(uint256 amount) external nonReentrant {
+    function redeem(uint256 amount) external {
+        require(amount > 0, "Invalid amount");
+        require(freeCollateral[msg.sender] >= amount, "Insufficient collateral");
+        
+        // 更新状态前执行检查
+        freeCollateral[msg.sender] -= amount;
+        
+        // 销毁代币
+        require(
+            token.balanceOf(msg.sender) >= amount,
+            "Insufficient token balance"
+        );
+        token.burnFrom(msg.sender, amount); // 需要代币支持burnFrom
+        
+        // 发送ETH
+        (bool success, ) = msg.sender.call{value: amount}("");
+        require(success, "ETH transfer failed");
+        
+        emit Redeemed(msg.sender, amount);
     }
 
     // Add collateral locking functions

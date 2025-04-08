@@ -25,6 +25,7 @@ contract LogisticPlatform {
         OrderStatus status;        // 当前状态
         OrderParam orderParam;     // 订单参数
         ItemInfo item;             // 物品详细信息
+        bool isRated;
     }
 
     struct OrderTimestamp {
@@ -41,7 +42,7 @@ contract LogisticPlatform {
     struct OrderParam {
         string coarsePickup;      // 粗粒度发货地
         string coarseDropoff;     // 粗粒度收货地
-        uint256 depositAmount;     // 押金要求（wei单位）
+        uint256 depositAmount;     // 押金要求（ETH单位）
         uint256 orderValue;        // 订单总金额（wei单位）
     }
 
@@ -60,6 +61,8 @@ contract LogisticPlatform {
     event OrderModified(uint256 indexed orderId, address indexed sender);
     event OrderCancelled(uint256 indexed orderId, address indexed sender);
     event OrderStatusChanged(uint256 indexed orderId, address indexed emitter, OrderStatus newStatus);
+    event OrderRated(uint256 indexed orderId, address indexed sender, int64 credit, string comment);
+    event CreditChanged(address indexed user, int64 credit);
 
     // Struct Create Utils
     function getItemInfo(
@@ -136,7 +139,8 @@ contract LogisticPlatform {
             orderTimestamp: _orderTimestamp,
             status: OrderStatus.Created,
             orderParam: _orderParam,
-            item: _itemInfo
+            item: _itemInfo,
+            isRated: false
         });
 
         emit OrderCreated(orderCounter, msg.sender);
@@ -160,7 +164,8 @@ contract LogisticPlatform {
             orderTimestamp: oldOrder.orderTimestamp,
             status: oldOrder.status,
             orderParam: _orderParam,
-            item: _itemInfo
+            item: _itemInfo,
+            isRated: oldOrder.isRated
         });
         
         orders[orderId] = newOrder;
@@ -217,6 +222,25 @@ contract LogisticPlatform {
         orders[orderId].orderTimestamp.finishedAt = uint40(block.timestamp);
 
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.Finished);
+        emit CreditChanged(msg.sender, 1);  // 完成订单给发送者和运输者增加较小的评分
+        emit CreditChanged(orders[orderId].courier, 1);
+    }
+
+    function rateCourier(
+        uint256 orderId,
+        int64 rating,
+        string memory comment
+    ) external {
+        require(msg.sender == orders[orderId].sender, "Only the sender can rate the courier.");
+        require(orders[orderId].status == OrderStatus.Finished, "Order status must be Finished.");
+        require(!orders[orderId].isRated, "Order has already been rated.");
+        require(rating >= 1 && rating <= 10, "Rating must be between 1 and 5.");
+
+        orders[orderId].isRated = true;
+
+        emit OrderRated(orderId, msg.sender, rating, comment);
+        emit CreditChanged(msg.sender, 1);
+        emit CreditChanged(orders[orderId].courier, rating);
     }
 
     // Courier relative functions
@@ -279,16 +303,5 @@ contract LogisticPlatform {
         orders[orderId].orderTimestamp.receivedAt = uint40(block.timestamp);
 
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.ReceiverReceived);
-    }
-
-    // ========== 状态检查 ==========
-    modifier onlyParticipant(uint256 _orderId) {
-        require(
-            msg.sender == orders[_orderId].sender ||
-            msg.sender == orders[_orderId].courier ||
-            msg.sender == orders[_orderId].receiver,
-            "Not a participant"
-        );
-        _;
     }
 }
