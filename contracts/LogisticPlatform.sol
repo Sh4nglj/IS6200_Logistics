@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.20;
 
+import "./CollateralPool.sol";
+
 contract LogisticPlatform {
+    CollateralPool public collateralPool;
+    
+    // 修改构造函数或添加初始化方法
+    function setCollateralPool(address poolAddress) external {
+        collateralPool = CollateralPool(poolAddress);
+    }
+    
+
     // 订单状态枚举（对应文档5种状态）
     enum OrderStatus {
         Created,     // 已创建
@@ -54,7 +64,7 @@ contract LogisticPlatform {
     }
 
     mapping(uint256 => Order) public orders;
-    uint256 private orderCounter; // 自增id
+    uint256 public orderCounter; // 自增id
 
     // Event
     event OrderCreated(uint256 indexed orderId, address indexed sender);
@@ -64,56 +74,19 @@ contract LogisticPlatform {
     event OrderRated(uint256 indexed orderId, address indexed sender, int64 credit, string comment);
     event CreditChanged(address indexed user, int64 credit);
 
-    // Struct Create Utils
-    function getItemInfo(
-        uint256 _volume,
-        uint256 _weight,
-        string calldata _description
-    ) external pure returns (ItemInfo memory) {
-        require(_volume > 0, "Invalid volume");
-        require(_weight > 0, "Invalid weight");
-        
-        return ItemInfo({
-            volume: _volume,
-            weight: _weight,
-            description: _description
-        });
-    }
+    // Sender 相关函数
+    function createOrder(
+        address _receiver, 
+        OrderParam memory _orderParam, 
+        ItemInfo memory _itemInfo
+    ) external {
+        // 新增抵押检查和锁定抵押品
+        // require(collateralPool.freeCollateral(msg.sender) >= _orderParam.depositAmount, "Insufficient collateral");
+        // collateralPool.lockCollateral(msg.sender, _orderParam.depositAmount);
 
-    function getOrderParam(
-        string calldata _coarsePickup,
-        string calldata _coarseDropoff,
-        uint256 _depositAmount,
-        uint256 _orderValue
-    ) external pure returns (OrderParam memory) {
-        require(bytes(_coarsePickup).length > 0, "Invalid pickup");
-        require(_depositAmount <= _orderValue, "Deposit exceeds value");
-
-        return OrderParam({
-            coarsePickup: _coarsePickup,
-            coarseDropoff: _coarseDropoff,
-            depositAmount: _depositAmount,
-            orderValue: _orderValue
-        });
-    }
-
-    function getTimestamp(
-        // uint40 createdAtTs
-        // uint40 confirmedAtTs,
-        // uint40 transitBeginAtTs,
-        // uint40 transitEndAtTs,
-        // uint40 receivedAtTs,
-        // uint40 finishedAtTs,
-        // uint40 canceledAtTs
-    ) internal view returns (OrderTimestamp memory) {
-        return OrderTimestamp({
-            createdAt: uint40(block.timestamp),
-            // confirmedAt: confirmedAtTs,
-            // transitBeginAt: transitBeginAtTs,
-            // receivedAt: receivedAtTs,
-            // transitEndAt: transitEndAtTs,
-            // canceledAt: canceledAtTs,
-            // finishedAt: finishedAtTs
+        orderCounter++;
+        OrderTimestamp memory _orderTimestamp = OrderTimestamp({
+            createdAt: block.timestamp,
             confirmedAt: 0,
             transitBeginAt: 0,
             receivedAt: 0,
@@ -121,26 +94,6 @@ contract LogisticPlatform {
             canceledAt: 0,
             finishedAt: 0
         });
-    }
-
-    // Sender 相关函数
-    function createOrder(
-        address _receiver, 
-        OrderParam memory _orderParam, 
-        ItemInfo memory _itemInfo
-    ) external {
-        orderCounter++;
-
-        OrderTimestamp memory _orderTimestamp = OrderTimestamp({
-            createdAt: block.timestamp,
-            confirmedAt: 0,
-            transitBeginAt: 0,
-            transitEndAt: 0,
-            receivedAt: 0,
-            finishedAt: 0,
-            canceledAt: 0   
-        });
-
         orders[orderCounter] = Order({
             id: orderCounter,
             sender: msg.sender,
@@ -192,7 +145,7 @@ contract LogisticPlatform {
             "Order can only be cancelled under OrderStatus 'Created' or 'Confirmed'."
         );
         orders[orderId].status = OrderStatus.Cancelled;
-        orders[orderId].orderTimestamp.canceledAt = uint40(block.timestamp);
+        orders[orderId].orderTimestamp.canceledAt = block.timestamp;
         emit OrderCancelled(orderId, msg.sender);
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.Cancelled);
     }
@@ -229,7 +182,7 @@ contract LogisticPlatform {
         require(orders[orderId].status == OrderStatus.ReceiverReceived, "Order status must be ReceiverReceived.");
 
         orders[orderId].status = OrderStatus.Finished;
-        orders[orderId].orderTimestamp.finishedAt = uint40(block.timestamp);
+        orders[orderId].orderTimestamp.finishedAt = block.timestamp;
 
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.Finished);
         emit CreditChanged(msg.sender, 1);  // 完成订单给发送者和运输者增加较小的评分
@@ -261,8 +214,7 @@ contract LogisticPlatform {
         require(orders[orderId].status == OrderStatus.SenderConfirmed, "Order is not confirmed by sender.");
 
         orders[orderId].status = OrderStatus.CourierConfirmed;
-        orders[orderId].orderTimestamp.confirmedAt = uint40(block.timestamp);
-
+        orders[orderId].orderTimestamp.confirmedAt = block.timestamp;
 
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.CourierConfirmed);
     }
@@ -286,7 +238,7 @@ contract LogisticPlatform {
         require(orders[orderId].status == OrderStatus.SenderDelivered, "Invalid order status");
 
         orders[orderId].status = OrderStatus.InTransit;
-        orders[orderId].orderTimestamp.transitBeginAt = uint40(block.timestamp);
+        orders[orderId].orderTimestamp.transitBeginAt = block.timestamp;
 
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.InTransit);
     }
@@ -298,7 +250,7 @@ contract LogisticPlatform {
         require(orders[orderId].status == OrderStatus.InTransit, "Invalid order status");
 
         orders[orderId].status = OrderStatus.CourierDelivered;
-        orders[orderId].orderTimestamp.transitEndAt = uint40(block.timestamp);
+        orders[orderId].orderTimestamp.transitEndAt = block.timestamp;
 
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.CourierDelivered);
     }
@@ -311,7 +263,7 @@ contract LogisticPlatform {
         require(orders[orderId].status == OrderStatus.CourierDelivered, "Invalid order status");
 
         orders[orderId].status = OrderStatus.ReceiverReceived;
-        orders[orderId].orderTimestamp.receivedAt = uint40(block.timestamp);
+        orders[orderId].orderTimestamp.receivedAt = block.timestamp;
 
         emit OrderStatusChanged(orderId, msg.sender, OrderStatus.ReceiverReceived);
     }

@@ -5,7 +5,7 @@ describe("CollateralPool - 基础功能测试", function () {
   let token, pool;
   let owner, user;
 
-  before(async function () {
+  beforeEach(async function () {
     [owner, user] = await ethers.getSigners();
 
     // 部署代币合约
@@ -15,38 +15,69 @@ describe("CollateralPool - 基础功能测试", function () {
     });
     await token.waitForDeployment();
 
+    token.on("DebugLog", (val0, val1, event) => {
+        console.log(`[实时监听] 地址 ${event.args} 转账详情:
+    可用余额: ${val0.toString()}
+    转账金额: ${val1.toString()}`);
+    });
+
     // 部署抵押池合约
     const CollateralPool = await ethers.getContractFactory("CollateralPool");
     pool = await CollateralPool.deploy(
-      await token.getAddress(),
+      token.target,
       owner.address
     );
 
     // 设置代币合约的抵押池地址
-    await token.setCollateralPool(pool.address);
+    await token.setCollateralPool(pool.target);
     
     // 转移所有权（如果需要）
-    await token.transferOwnership(pool.address);
+    await token.transferTokenOwnership(pool.target);
   });
 
   it("抵押与销毁代币", async () => {
-    const depositAmount = ethers.parseEther("1000.0");
+    const depositAmount = 800;
     
     // 执行存款
-    await expect(
-      pool.connect(user).deposit({ value: depositAmount })
-    ).to.changeEtherBalance(user, -depositAmount);
+    await expect(pool.connect(user).deposit({ value: depositAmount })).to.changeEtherBalance(user, -depositAmount);
 
     // 验证状态
-    expect(await pool.freeCollateral(user.address)).to.equal(depositAmount);
-    expect(await token.balanceOf(user.address)).to.equal(depositAmount);
+    expect(await token.balanceOf(user)).to.equal(depositAmount);
+    expect(await token.getFreeBalance(user)).to.equal(depositAmount);
 
-    await expect(
-        pool.connect(user).redeem(425)
-    ).to.changeEtherBalance(user, 425)
+    const redeemAmount = 425;
+    expect(await token.balanceOf(user.address)).to.gte(redeemAmount);
+    await expect(pool.connect(user).redeem(redeemAmount)).to.changeEtherBalance(user, redeemAmount)
 
-    const restDepositAmount = depositAmount - 425;
-    expect(await pool.freeCollateral(user.address)).to.equal(restDepositAmount);
+    restDepositAmount = depositAmount - redeemAmount;
+    expect(await token.balanceOf(user.address)).to.equal(restDepositAmount);
+    expect(await token.getFreeBalance(user.address)).to.equal(restDepositAmount);
+  });
+
+  it("多次deposit一次redeem", async () => {
+    const depositAmount0 = 5000;
+    const depositAmount1 = 400;
+    const depositAmount2 = 300;
+    const redeemAmount = 5500;
+    restDepositAmount = depositAmount0 + depositAmount1 + depositAmount2 - redeemAmount;
+
+    await expect(pool.connect(user).deposit({ value: depositAmount0 })).to.changeEtherBalance(user, -depositAmount0);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0);
+
+    await expect(pool.connect(user).deposit({ value: depositAmount1 })).to.changeEtherBalance(user, -depositAmount1);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 + depositAmount1);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0 + depositAmount1);
+
+    await expect(pool.connect(user).deposit({ value: depositAmount2 })).to.changeEtherBalance(user, -depositAmount2);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 + depositAmount1 + depositAmount2);
+    expect(await token.balanceOf(user.address)).to.equal(depositAmount0 + depositAmount1 + depositAmount2);
+
+    expect(await token.balanceOf(user.address)).to.gte(redeemAmount);
+    expect(await token.getFreeBalance(user.address)).to.equal(depositAmount0 + depositAmount1 + depositAmount2)
+    await expect(pool.connect(user).redeem(redeemAmount)).to.changeEtherBalance(user, redeemAmount);
+
+    expect(await token.getFreeBalance(user.address)).to.equal(restDepositAmount);
     expect(await token.balanceOf(user.address)).to.equal(restDepositAmount);
   });
 });

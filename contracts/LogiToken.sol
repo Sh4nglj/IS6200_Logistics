@@ -7,8 +7,16 @@ import "./CollateralPool.sol";
 
 contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     CollateralPool public collateralPool;
-    
     bool public transferEnabled;
+    mapping(address => uint256) public lockedBalances;  // 抵押状态代币
+    mapping(address => uint256) public freeBalances;  // 自由状态代币
+    // mapping(address => uint256) private _redeemAllowance;  // 可赎回的代币
+
+    // 
+    modifier onlyCollateralPool() {
+        require(msg.sender == address(collateralPool), "Unauthorized");
+        _;
+    }
     
     // 初始化函数（用于可升级合约）
     function initialize(string memory name, string memory symbol) initializer public {
@@ -21,25 +29,55 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         collateralPool = CollateralPool(_pool);
     }
 
-    // 禁用转账功能（待升级开启）
+    function transferTokenOwnership(address _pool) external onlyOwner {
+        require(_pool != address(0), "invalid address");
+        _transferOwnership(_pool);
+    }
+
+    event DebugLog(uint256 val0, uint256 val1);
+
+    // 禁用转账功能（禁用逻辑待处理；待升级开启）
     function _update(address from, address to, uint256 value) internal override {
-        if(from != address(0)) {
-            uint256 available = collateralPool.freeCollateral(from);
-            require(available >= value, "Transfer exceeds available collateral");
-        }
+        // if(from != address(0)) {
+        //     uint256 available = freeBalances[from];
+        //     require(available >= value, "Transfer exceeds available collateral");
+        // }
         super._update(from, to, value);
     }
 
     // 铸造函数（仅抵押池可调用）
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
+        freeBalances[to] += amount;
+    }
+
+    // 销毁授权函数(需要在销毁函数之前调用)
+    function approveRedeem(address user) external onlyCollateralPool {
+        _approve(user, address(collateralPool), freeBalances[user]);
     }
 
     // 销毁函数（仅抵押池可调用）
-    function burnFrom(address account, uint256 amount) external {
-        uint256 currentAllowance = allowance(account, msg.sender);
-        require(currentAllowance >= amount, "ERC20: burn amount exceeds allowance");
-        _approve(account, msg.sender, currentAllowance - amount);
+    function burnFrom(address account, uint256 amount) external onlyCollateralPool {
+        require(freeBalances[account] >= amount, "Insufficient free tokens");
+        freeBalances[account] -= amount;
         _burn(account, amount);
+    }
+
+    function lockToken(address user, uint256 amount) external onlyCollateralPool {
+        lockedBalances[user] += amount;
+        freeBalances[user] -= amount;
+    }
+
+    function freeToken(address user, uint256 amount) external onlyCollateralPool {
+        lockedBalances[user] -= amount;
+        freeBalances[user] += amount;
+    }
+
+    function getLockedBalance(address user) external view returns(uint256) {
+        return lockedBalances[user];
+    }
+
+    function getFreeBalance(address user) external view returns(uint256) {
+        return freeBalances[user];
     }
 }
