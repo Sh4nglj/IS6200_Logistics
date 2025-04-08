@@ -1,0 +1,106 @@
+根据需求，我们可以通过以下步骤实现基于事件的评分系统：
+
+### 1. 添加评分事件
+```solidity
+// 在事件声明区域添加
+event CourierRated(
+    uint256 indexed orderId,
+    address indexed courier,
+    address indexed sender,
+    uint8 score
+);
+```
+
+### 2. 添加评分函数
+```solidity
+function rateCourier(uint256 orderId, uint8 score) external {
+    Order storage order = orders[orderId];
+    
+    // 验证条件
+    require(msg.sender == order.sender, "Only sender can rate");
+    require(order.status == OrderStatus.Finished, "Order not completed");
+    require(score >= 1 && score <= 5, "Score must be 1-5");
+
+    // 触发评分事件
+    emit CourierRated(orderId, order.courier, msg.sender, score);
+}
+```
+
+### 设计说明
+
+| 参数        | 说明                                                                 |
+|-------------|--------------------------------------------------------------------|
+| orderId     | 需要与具体订单绑定，确保评价对应实际发生的物流交易                         |
+| score       | 使用uint8类型（1-5分），节省gas费                                      |
+| 状态检查     | 必须订单已完成（Finished状态）才能评分                                  |
+| 权限检查     | 只有订单创建者（sender）可以评分                                       |
+
+### 扩展建议
+
+1. **链下评分聚合**：
+```javascript
+// 示例：使用TheGraph索引事件数据
+entity CourierRating {
+  id: ID!         // courier地址
+  totalScore: Int
+  ratingCount: Int
+  averageScore: BigDecimal
+}
+
+// 查询示例
+query GetCourierRating($address: String!) {
+  courierRating(id: $address) {
+    averageScore
+    ratingCount
+  }
+}
+```
+
+2. **防止重复评分**：
+```solidity
+// 如果需要防止重复评分，可增加映射
+mapping(uint256 => bool) public hasRated;
+
+function rateCourier(...) ... {
+    ...
+    require(!hasRated[orderId], "Already rated");
+    hasRated[orderId] = true;
+}
+```
+
+3. **评分验证增强**：
+```solidity
+// 检查订单是否真实存在
+require(order.id != 0, "Invalid order");
+
+// 检查承运人是否存在
+require(order.courier != address(0), "No courier assigned");
+```
+
+### 完整代码集成位置
+```solidity
+// 在LogisticPlatform合约中添加：
+
+// 事件定义（与其他事件并列）
+event CourierRated(uint256 indexed orderId, address indexed courier, address indexed sender, uint8 score);
+
+// 函数添加在合约尾部（在receiveDelivery函数之后）
+function rateCourier(uint256 orderId, uint8 score) external {
+    Order storage order = orders[orderId];
+    require(order.id == orderId, "Order does not exist");
+    require(msg.sender == order.sender, "Only sender can rate");
+    require(order.status == OrderStatus.Finished, "Order not completed");
+    require(score >= 1 && score <= 5, "Score must be 1-5");
+    require(order.courier != address(0), "No courier assigned");
+
+    emit CourierRated(orderId, order.courier, msg.sender, score);
+}
+```
+
+这种设计具有以下优势：
+1. **零存储开销**：不占用合约存储空间
+2. **可追溯性**：通过事件日志可追溯所有历史评分
+3. **灵活性**：评分逻辑可完全通过链下处理
+4. **低Gas消耗**：单个评分交易约消耗~25,000 gas
+
+如果需要更复杂的声誉系统（如计算平均分），建议通过链下索引服务（如The Graph）处理事件日志并生成聚合数据。
