@@ -36,13 +36,13 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
 
     event DebugLog(uint256 val0, uint256 val1);
 
-    // 禁用转账功能（禁用逻辑待处理；待升级开启）
-    function _update(address from, address to, uint256 value) internal override {
-        // if(from != address(0)) {
-        //     uint256 available = freeBalances[from];
-        //     require(available >= value, "Transfer exceeds available collateral");
-        // }
-        super._update(from, to, value);
+    // Override transfer functions
+    function transfer(address to, uint256 value) public override onlyCollateralPool returns (bool) {
+        return super.transfer(to, value);
+    }
+
+    function transferFrom(address from, address to, uint256 value) public override onlyCollateralPool returns (bool) {
+        return super.transferFrom(from, to, value);
     }
 
     // 铸造函数（仅抵押池可调用）
