@@ -12,6 +12,11 @@ contract CollateralPool {
     address public platform;
     address private owner;
 
+    uint256 public constant COURIER_RATIO = 800;
+    uint256 public constant PLATFORM_RATIO = 175;
+    uint256 public constant OWNER_RATIO = 25;
+    uint256 public constant TOTAL_RATIO = 1000;
+
     event Deposited(address indexed user, uint256 amount);
     event Redeemed(address indexed user, uint256 amount);
     
@@ -47,11 +52,12 @@ contract CollateralPool {
         emit Redeemed(msg.sender, amount);
     }
 
+    // 结算合约阶段
     function settle(address sender, address courier, uint256 amount) external onlyPlatform{
         token.freeToken(sender, amount);
-        uint256 token_courier = (amount) * 800 / 1000;
-        uint256 token_platform = (amount) * 175 / 1000;
-        uint256 token_owner = (amount) * 25 / 1000;
+        uint256 token_courier = (amount) * COURIER_RATIO / TOTAL_RATIO;
+        uint256 token_platform = (amount) * PLATFORM_RATIO / TOTAL_RATIO;
+        uint256 token_owner = (amount) * OWNER_RATIO / TOTAL_RATIO;
 
         token.transferFrom(sender, courier, token_courier);
         token.transferFrom(sender, owner, token_platform);

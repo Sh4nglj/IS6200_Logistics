@@ -126,6 +126,14 @@ contract LogisticPlatform {
         Order storage currentOrder = orders[_orderId];
         require(currentOrder.status == OrderStatus.Created, "Order can not be modified now.");
         require(msg.sender == currentOrder.sender, "Only sender can modify");
+        uint256 oldOrderValue = currentOrder.orderParam.orderValue;
+        uint256 newOrderValue = _orderParam.orderValue;
+        if (newOrderValue > oldOrderValue) {
+            require(logiToken.getFreeBalance(msg.sender) >= (newOrderValue - oldOrderValue), "Insufficient balance");
+            collateralPool.lockToken(msg.sender, newOrderValue - oldOrderValue);
+        } else if (newOrderValue < oldOrderValue) {
+            collateralPool.freeToken(msg.sender, oldOrderValue - newOrderValue);
+        }
 
         currentOrder.orderParam = _orderParam;
         currentOrder.item = _itemInfo;
@@ -143,6 +151,7 @@ contract LogisticPlatform {
             orders[_orderId].status == OrderStatus.CourierConfirmed,
             "Order can only be cancelled under OrderStatus 'Created' or 'Confirmed'."
         );
+        collateralPool.freeToken(orders[_orderId].sender, orders[_orderId].orderParam.orderValue);
 
         orders[_orderId].status = OrderStatus.Cancelled;
         orders[_orderId].orderTimestamp.canceledAt = block.timestamp;
@@ -185,10 +194,10 @@ contract LogisticPlatform {
         orders[_orderId].status = OrderStatus.Finished;
         orders[_orderId].orderTimestamp.finishedAt = block.timestamp;
 
-        // collateralPool.freeToken(orders[orderId].courier, orders[orderId].orderParam.depositAmount);
-        // collateralPool.settle(orders[orderId].sender, orders[orderId].courier, orders[orderId].orderParam.orderValue);
+        collateralPool.freeToken(orders[_orderId].courier, orders[_orderId].orderParam.depositAmount);
+        collateralPool.settle(orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].orderParam.orderValue);
 
-        emit OrderStatusChanged(orderId, msg.sender, OrderStatus.Finished);
+        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.Finished);
         emit CreditChanged(msg.sender, 1);  // 完成订单给发送者和运输者增加较小的评分
         emit CreditChanged(orders[_orderId].courier, 1);
     }
@@ -214,10 +223,10 @@ contract LogisticPlatform {
     function takeOrder(
         uint256 _orderId
     ) external {
-        require(msg.sender == orders[orderId].courier, "Only the courier can take the order.");
-        require(orders[orderId].status == OrderStatus.SenderConfirmed, "Order is not confirmed by sender.");
-        // require(logiToken.getFreeBalance(msg.sender) >= orders[orderId].orderParam.depositAmount, "Insufficient collateral");
-        // collateralPool.lockToken(msg.sender, orders[orderId].orderParam.depositAmount);
+        require(msg.sender == orders[_orderId].courier, "Only the courier can take the order.");
+        require(orders[_orderId].status == OrderStatus.SenderConfirmed, "Order is not confirmed by sender.");
+        require(logiToken.getFreeBalance(msg.sender) >= orders[_orderId].orderParam.depositAmount, "Insufficient collateral");
+        collateralPool.lockToken(msg.sender, orders[_orderId].orderParam.depositAmount);
 
         orders[_orderId].status = OrderStatus.CourierConfirmed;
         orders[_orderId].orderTimestamp.confirmedAt = block.timestamp;
@@ -230,6 +239,7 @@ contract LogisticPlatform {
     ) external {
         require(msg.sender == orders[_orderId].courier, "Only courier can refuse");
         require(orders[_orderId].status == OrderStatus.CourierConfirmed, "Order can only be cancelled under OrderStatus 'Confirmed'.");
+        collateralPool.freeToken(msg.sender, orders[_orderId].orderParam.depositAmount);
         
         orders[_orderId].status = OrderStatus.Created;
         orders[_orderId].courier = address(0);

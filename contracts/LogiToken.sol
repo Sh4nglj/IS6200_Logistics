@@ -13,6 +13,8 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     // mapping(address => uint256) private _redeemAllowance;  // 可赎回的代币
     bool public paused;
 
+    event Paused(address indexed owner);
+    event Unpaused(address indexed owner);
     event TokensLocked(address indexed user, uint256 amount);
     event TokensFreed(address indexed user, uint256 amount);
     event TokensBurned(address indexed user, uint256 amount);
