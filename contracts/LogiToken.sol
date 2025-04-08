@@ -11,10 +11,15 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     mapping(address => uint256) public lockedBalances;  // 抵押状态代币
     mapping(address => uint256) public freeBalances;  // 自由状态代币
     // mapping(address => uint256) private _redeemAllowance;  // 可赎回的代币
+    bool public paused;
 
-    // 
     modifier onlyCollateralPool() {
         require(msg.sender == address(collateralPool), "Unauthorized");
+        _;
+    }
+    
+    modifier whenNotPaused() {
+        require(!paused, "Contract is paused");
         _;
     }
     
@@ -35,6 +40,9 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     }
 
     event DebugLog(uint256 val0, uint256 val1);
+    event TokensLocked(address indexed user, uint256 amount);
+    event TokensFreed(address indexed user, uint256 amount);
+    event TokensBurned(address indexed user, uint256 amount);
 
     // Override transfer functions
     function transfer(address to, uint256 value) public override onlyCollateralPool returns (bool) {
@@ -63,9 +71,11 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         _burn(account, amount);
     }
 
-    function lockToken(address user, uint256 amount) external onlyCollateralPool {
+    function lockToken(address user, uint256 amount) external onlyCollateralPool whenNotPaused {
+        require(freeBalances[user] >= amount, "Insufficient free tokens");
         lockedBalances[user] += amount;
         freeBalances[user] -= amount;
+        emit TokensLocked(user, amount);
     }
 
     function freeToken(address user, uint256 amount) external onlyCollateralPool {
@@ -79,5 +89,15 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
 
     function getFreeBalance(address user) external view returns(uint256) {
         return freeBalances[user];
+    }
+
+    function pause() external onlyOwner {
+        paused = true;
+        emit Paused(msg.sender);
+    }
+
+    function unpause() external onlyOwner {
+        paused = false;
+        emit Unpaused(msg.sender);
     }
 }
