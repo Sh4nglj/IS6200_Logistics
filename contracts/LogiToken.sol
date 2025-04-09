@@ -6,19 +6,24 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./CollateralPool.sol";
 
 contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
+    // 状态变量
     CollateralPool public collateralPool;
     bool public transferEnabled;
+    bool public paused;
+    
+    // 映射
     mapping(address => uint256) public lockedBalances;  // 抵押状态代币
     mapping(address => uint256) public freeBalances;  // 自由状态代币
     // mapping(address => uint256) private _redeemAllowance;  // 可赎回的代币
-    bool public paused;
 
+    // 事件
     event Paused(address indexed owner);
     event Unpaused(address indexed owner);
     event TokensLocked(address indexed user, uint256 amount);
     event TokensFreed(address indexed user, uint256 amount);
     event TokensBurned(address indexed user, uint256 amount);
 
+    // 修饰器
     modifier onlyCollateralPool() {
         require(msg.sender == address(collateralPool), "Unauthorized");
         _;
@@ -36,6 +41,7 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         transferEnabled = false;
     }
 
+    // 设置函数
     function setCollateralPool(address _pool) external onlyOwner {
         collateralPool = CollateralPool(_pool);
     }
@@ -45,6 +51,7 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         _transferOwnership(_pool);
     }
 
+    // 代币基本功能
     // Override transfer functions
     function transfer(address to, uint256 value) public override onlyCollateralPool returns (bool) {
         return super.transfer(to, value);
@@ -72,6 +79,7 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         _burn(account, amount);
     }
 
+    // 代币锁定/解锁相关
     function lockToken(address user, uint256 amount) external onlyCollateralPool whenNotPaused {
         require(freeBalances[user] >= amount, "Insufficient free tokens");
         lockedBalances[user] += amount;
@@ -83,8 +91,10 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         require(lockedBalances[user] >= amount, "Insufficient locked tokens");
         lockedBalances[user] -= amount;
         freeBalances[user] += amount;
+        emit TokensFreed(user, amount);
     }
 
+    // 查询函数
     function getLockedBalance(address user) external view returns(uint256) {
         return lockedBalances[user];
     }
@@ -93,6 +103,7 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         return freeBalances[user];
     }
 
+    // 安全控制
     function pause() external onlyOwner {
         paused = true;
         emit Paused(msg.sender);
