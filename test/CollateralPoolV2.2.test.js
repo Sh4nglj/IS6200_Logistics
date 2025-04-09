@@ -31,8 +31,8 @@ describe("CollateralPool - 基础功能测试", function () {
     // 设置代币合约的抵押池地址
     await token.setCollateralPool(pool.target);
     
-    // 转移所有权（如果需要）
-    await token.transferTokenOwnership(pool.target);
+    // 转移所有权（如果需要）（不再需要）
+    // await token.transferTokenOwnership(pool.target);
   });
 
   it("抵押与销毁代币", async () => {

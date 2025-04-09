@@ -19,16 +19,19 @@ contract CollateralPool {
 
     event Deposited(address indexed user, uint256 amount);
     event Redeemed(address indexed user, uint256 amount);
+    event Settled(address indexed sender, address indexed courier, uint256 amount);
+    event DebugInfo(string str, address indexed user);
     
     // Add modifier
     modifier onlyPlatform() {
-        require(msg.sender == address(platform), "Unauthorized");
+        require(msg.sender == platform, "Unauthorized");
         _;
     }
     
-    constructor(address tokenAddress, address _platform) {
+    constructor(address tokenAddress, address _platform, address _owner) {
         token = LogiToken(tokenAddress);
         platform = _platform;
+        owner = _owner;
     }
 
     // Modified deposit function
@@ -53,23 +56,26 @@ contract CollateralPool {
     }
 
     // 结算合约阶段
-    function settle(address sender, address courier, uint256 amount) external onlyPlatform{
+    function settle(address sender, address courier, uint256 amount) external onlyPlatform {
+        emit DebugInfo("Pool owner", owner);
+        
         token.freeToken(sender, amount);
         uint256 token_courier = (amount) * COURIER_RATIO / TOTAL_RATIO;
         uint256 token_platform = (amount) * PLATFORM_RATIO / TOTAL_RATIO;
         uint256 token_owner = (amount) * OWNER_RATIO / TOTAL_RATIO;
 
+        token.approveTransaction(sender, amount);
         token.transferFrom(sender, courier, token_courier);
         token.transferFrom(sender, owner, token_platform);
         token.transferFrom(sender, address(this), token_owner);
     }
 
     // 用于platform中业务流程的调用
-    function lockToken(address user, uint256 amount) external {  // 不用onlyPlatform, 
+    function lockToken(address user, uint256 amount) external onlyPlatform {  // 不用onlyPlatform, 
         token.lockToken(user, amount);
     }
 
-    function freeToken(address user, uint256 amount) external   { // onlyPlatform
+    function freeToken(address user, uint256 amount) external onlyPlatform { // onlyPlatform
         token.freeToken(user, amount);
     }
 }

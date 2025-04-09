@@ -18,6 +18,7 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     event TokensLocked(address indexed user, uint256 amount);
     event TokensFreed(address indexed user, uint256 amount);
     event TokensBurned(address indexed user, uint256 amount);
+    event TokensTransferred(address indexed from, address indexed to, uint256 amount);
 
     modifier onlyCollateralPool() {
         require(msg.sender == address(collateralPool), "Unauthorized");
@@ -47,15 +48,23 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
 
     // Override transfer functions
     function transfer(address to, uint256 value) public override onlyCollateralPool returns (bool) {
-        return super.transfer(to, value);
+        bool res = super.transfer(to, value);
+        freeBalances[msg.sender] -= value;
+        freeBalances[to] += value;
+        emit TokensTransferred(msg.sender, to, value);
+        return res;
     }
 
     function transferFrom(address from, address to, uint256 value) public override onlyCollateralPool returns (bool) {
-        return super.transferFrom(from, to, value);
+        bool res =  super.transferFrom(from, to, value);
+        freeBalances[from] -= value;
+        freeBalances[to] += value;
+        emit TokensTransferred(from, to, value);
+        return res;
     }
 
     // 铸造函数（仅抵押池可调用）
-    function mint(address to, uint256 amount) external onlyOwner {
+    function mint(address to, uint256 amount) external onlyCollateralPool {
         _mint(to, amount);
         freeBalances[to] += amount;
     }
@@ -65,11 +74,17 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         _approve(user, address(collateralPool), freeBalances[user]);
     }
 
+    function approveTransaction(address user, uint256 amount) external onlyCollateralPool {
+        require(freeBalances[user] >= amount, "Insufficient free tokens");
+        _approve(user, address(collateralPool), amount);
+    }
+
     // 销毁函数（仅抵押池可调用）
     function burnFrom(address account, uint256 amount) external onlyCollateralPool {
         require(freeBalances[account] >= amount, "Insufficient free tokens");
         freeBalances[account] -= amount;
         _burn(account, amount);
+        emit TokensBurned(account, amount);
     }
 
     function lockToken(address user, uint256 amount) external onlyCollateralPool whenNotPaused {
@@ -83,6 +98,7 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         require(lockedBalances[user] >= amount, "Insufficient locked tokens");
         lockedBalances[user] -= amount;
         freeBalances[user] += amount;
+        emit TokensFreed(user, amount);
     }
 
     function getLockedBalance(address user) external view returns(uint256) {
