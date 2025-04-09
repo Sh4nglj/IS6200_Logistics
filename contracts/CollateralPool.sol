@@ -151,7 +151,7 @@ contract CollateralPool {
      * 根据计算出的比例，从奖金池中分配代币给快递员
      * 此函数只能由平台合约调用，确保分配公平性
      */
-    function distributeBonusTo(address courier, uint256 shareRatio) external onlyPlatform {
+    function distributeBonusTo(address courier, uint256 shareRatio) external onlyPlatform returns (uint256) {
         require(courier != address(0), "Invalid courier address");
         require(bonusPool > 0, "Bonus pool is empty");
         
@@ -168,6 +168,8 @@ contract CollateralPool {
             
             emit BonusDistributed(courier, courierBonus, shareRatio);
         }
+
+        return courierBonus;
     }
     
     /**

@@ -14,9 +14,13 @@ contract LogisticPlatform {
     LogiToken public logiToken;
 
     uint256 public constant DISTRIBUTE_INTERVAL = 30 days; // 分润间隔
-
     uint256 public orderCounter; // 自增id
     uint256 public lastDistributeTime; // 上一次分润时间
+    address[] public ratedCourierList;
+
+    // 映射
+    mapping(uint256 => Order) public orders;
+    mapping(address => uint8) public courierCreditMap;
     
     // 枚举和结构体
     // 订单状态枚举（对应文档5种状态）
@@ -70,12 +74,6 @@ contract LogisticPlatform {
         string description; // 物品描述（加密存储）
     }
 
-    address[] public ratedCourierList;
-
-    // 映射
-    mapping(uint256 => Order) public orders;
-    mapping(address => uint8) public courierCreditMap;
-
     // 事件
     event OrderCreated(uint256 indexed orderId, address indexed sender);
     event OrderModified(uint256 indexed orderId, address indexed sender);
@@ -83,7 +81,7 @@ contract LogisticPlatform {
     event OrderStatusChanged(uint256 indexed orderId, address indexed emitter, OrderStatus newStatus);
     event OrderRated(uint256 indexed orderId, address indexed sender, int64 credit, string comment);
     event CreditChanged(address indexed user, int64 credit);
-    event ProfitDistributed(uint256 totalAmount, uint256 timestamp);
+    event ProfitDistributed(uint256 indexed timestamp, uint256 bonusPoolAmount, string message);
 
     /**
      * @dev 设置抵押池合约地址
@@ -323,6 +321,7 @@ contract LogisticPlatform {
         require(msg.sender == currentOrder.courier, "Only the courier can take the order.");
         require(currentOrder.status == OrderStatus.SenderConfirmed, "Order is not confirmed by sender.");
         require(logiToken.getFreeBalance(msg.sender) >= currentOrder.orderParam.depositAmount, "Insufficient collateral");
+       
         collateralPool.lockToken(msg.sender, currentOrder.orderParam.depositAmount);
 
         currentOrder.status = OrderStatus.CourierConfirmed;
@@ -452,19 +451,23 @@ contract LogisticPlatform {
             
             // 计算每个快递员应得的比例并分发
             if (totalScore > 0) {
+                string memory message = "";
+
                 for (uint256 i = 0; i < totalCouriers; i++) {
                     address courier = uniqueCouriers[i];
                     uint256 shareRatio = (courierScores[i] * 1e18) / totalScore; // 使用18位精度
                     
                     // 调用CollateralPool的分润函数
-                    collateralPool.distributeBonusTo(courier, shareRatio);
+                    uint256 courierBonus = collateralPool.distributeBonusTo(courier, shareRatio);
+                    message = string.concat(message, ";", Strings.toHexString(uint256(courier), 20), "_", Strings.toString(courierBonus));
                 }
                 
                 // 触发分润完成事件
-                emit ProfitDistributed(bonusPoolAmount, lastDistributeTime);
+                emit ProfitDistributed(lastDistributeTime, bonusPoolAmount, message);
                 
                 // 重置评分数据
                 delete ratedCourierList;
+                delete courierCreditMap;
             }
         }
     }
