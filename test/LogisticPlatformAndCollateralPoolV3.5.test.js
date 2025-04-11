@@ -68,16 +68,16 @@ describe("LogisticPlatform with CollateralPool", function () {
 
   it("should complete full order flow with collateral", async () => {
     // 1. Deposit collateral
-    const depositAmount0 = ethers.parseEther("10");
-    const depositAmount1 = ethers.parseEther("3");
+    const depositAmount0 = ethers.parseEther("100");
+    const depositAmount1 = ethers.parseEther("30");
     expect(await pool.connect(sender).deposit({ value: depositAmount0 })).to.changeEtherBalance(sender, -depositAmount0);
     
     // Verify initial balances
     expect(await token.getFreeBalance(sender.address)).to.equal(depositAmount0);
 
     // 2. Create order
-    const orderValue = ethers.parseEther("5");
-    const depositRequirement = ethers.parseEther("1");
+    const orderValue = ethers.parseEther("50");
+    const depositRequirement = ethers.parseEther("10");
     
     const orderParam = {
       coarsePickup: "Location A",
@@ -148,9 +148,10 @@ describe("LogisticPlatform with CollateralPool", function () {
     
     // Collateral pool balance
     expect(await token.balanceOf(pool.target)).to.equal(expectedOwnerShare);
+    expect(await pool.connect(sender).redeem((depositAmount0 - orderValue + orderValue - expectedCourierShare - expectedPlatformShare - expectedOwnerShare) / 2n));
 
-    // 使用 setTimeout 封装成 Promise
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    await sleep(2000); 
+    // 使用 setTimeout 封装成 Promise，确保所有的event监听都能够执行完成
+    // const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    // await sleep(2000); 
   });
 });

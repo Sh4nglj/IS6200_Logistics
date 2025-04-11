@@ -31,6 +31,16 @@ contract LogisticPlatform {
         Cancelled    // 已取消
     }
 
+    enum CreditChangeReason {
+        FinishOrder,
+        TransportOrder,
+        RateOrder,
+        BeingRated,
+        Punishment,
+        WinArgue,
+        LoseArgue
+    }
+
     // 订单结构体（核心数据结构）
     struct Order {                  
         uint256 id;                // 订单ID
@@ -46,6 +56,7 @@ contract LogisticPlatform {
 
     struct OrderTimestamp {
         uint256 createdAt;         // 创建时间戳
+        uint256 assignedAt;
         uint256 confirmedAt;       // 确认时间戳
         uint256 transitBeginAt;       // 开始运输时间
         uint256 transitEndAt;       // 结束运输时间
@@ -73,19 +84,25 @@ contract LogisticPlatform {
     uint256 public orderCounter; // 自增id
 
     // Event
-    event OrderCreated(uint256 indexed orderId, address indexed sender);
-    event OrderModified(uint256 indexed orderId, address indexed sender);
-    event OrderCancelled(uint256 indexed orderId, address indexed sender);
-    event OrderStatusChanged(uint256 indexed orderId, address indexed emitter, OrderStatus newStatus);
-    event OrderRated(uint256 indexed orderId, address indexed sender, int64 credit, string comment);
-    event CreditChanged(address indexed user, int64 credit);
+    event OrderCreated(uint256 indexed orderId, address indexed sender, address courier, address indexed receiver, string coarsePickup, string coarseDropoff, uint256 orderValue);  // order创建时，courier不需要为indexed
+    event OrderModified(uint256 indexed orderId, address indexed sender, address indexed courier, address receiver,  string coarsePickup, string coarseDropoff, uint256 orderValue);
+    event OrderCancelled(uint256 indexed orderId, address indexed sender, address indexed courier, address receiver);
+    event OrderStatusChanged(uint256 indexed orderId, address indexed sender, address indexed courier, address receiver, string newStatus);  // 使用string来表示订单状态，是因为定义的枚举不被event支持，导致event无法emit
+    event OrderRated(uint256 indexed orderId, address indexed sender, address indexed courier, int64 credit, string comment);
+    event CreditChanged(address indexed user, int64 credit, string reasonChanged);
+
+    // modifiers
+    modifier onlyParticipant(uint256 _orderId) {
+        require(msg.sender == orders[_orderId].sender || msg.sender == orders[_orderId].courier || msg.sender == orders[_orderId].receiver, "Only the sender, courier or receiver can call this function.");
+        _;
+    }
 
     // Sender 相关函数
     function createOrder(
         address _receiver, 
         OrderParam memory _orderParam, 
         ItemInfo memory _itemInfo
-    ) external {
+    ) external returns (uint256) {
         // 新增抵押检查和锁定抵押品
         require(logiToken.getFreeBalance(msg.sender) >= _orderParam.orderValue, "Insufficient collateral");
         collateralPool.lockToken(msg.sender, _orderParam.orderValue);
@@ -94,6 +111,7 @@ contract LogisticPlatform {
         
         OrderTimestamp memory _orderTimestamp = OrderTimestamp({
             createdAt: block.timestamp,
+            assignedAt: 0,
             confirmedAt: 0,
             transitBeginAt: 0,
             receivedAt: 0,
@@ -114,8 +132,9 @@ contract LogisticPlatform {
             isRated: false
         });
 
-        emit OrderCreated(orderCounter, msg.sender);
-        emit OrderStatusChanged(orderCounter, msg.sender, OrderStatus.Created);
+        emit OrderCreated(orderCounter, msg.sender, address(0), _receiver, _orderParam.coarsePickup, _orderParam.coarseDropoff, _orderParam.orderValue);
+        emit OrderStatusChanged(orderCounter, msg.sender, address(0), _receiver, "Created");
+        return orderCounter;
     }
 
     function modifyOrder(
@@ -138,7 +157,7 @@ contract LogisticPlatform {
         currentOrder.orderParam = _orderParam;
         currentOrder.item = _itemInfo;
 
-        emit OrderModified(_orderId, msg.sender);
+        emit OrderModified(_orderId, currentOrder.sender, currentOrder.courier, currentOrder.receiver, _orderParam.coarsePickup, _orderParam.coarseDropoff, _orderParam.orderValue);
     }
 
     // Sender cancel order
@@ -156,8 +175,8 @@ contract LogisticPlatform {
         orders[_orderId].status = OrderStatus.Cancelled;
         orders[_orderId].orderTimestamp.canceledAt = block.timestamp;
 
-        emit OrderCancelled(_orderId, msg.sender);
-        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.Cancelled);
+        emit OrderCancelled(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver);
+        emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "Cancelled");
     }
 
     function confirmOrder(
@@ -170,8 +189,9 @@ contract LogisticPlatform {
 
         orders[_orderId].status = OrderStatus.SenderConfirmed;
         orders[_orderId].courier = _courier;
+        orders[_orderId].orderTimestamp.assignedAt = block.timestamp;
 
-        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.SenderConfirmed);
+        emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "SenderConfirmed");
     }
 
     function sendDelivery(
@@ -182,7 +202,7 @@ contract LogisticPlatform {
 
         orders[_orderId].status = OrderStatus.SenderDelivered;
 
-        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.SenderDelivered);
+        emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "SenderDelivered");
     }
 
     function finishOrder(
@@ -197,9 +217,9 @@ contract LogisticPlatform {
         collateralPool.freeToken(orders[_orderId].courier, orders[_orderId].orderParam.depositAmount);
         collateralPool.settle(orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].orderParam.orderValue);
 
-        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.Finished);
-        emit CreditChanged(msg.sender, 1);  // 完成订单给发送者和运输者增加较小的评分
-        emit CreditChanged(orders[_orderId].courier, 1);
+        emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "Finished");
+        emit CreditChanged(msg.sender, 1, "FinishOrder");  // 完成订单给发送者和运输者增加较小的评分
+        emit CreditChanged(orders[_orderId].courier, 1, "TransportOrder");
     }
 
     function rateCourier(
@@ -214,9 +234,9 @@ contract LogisticPlatform {
 
         orders[_orderId].isRated = true;
 
-        emit OrderRated(_orderId, msg.sender, _rating, _comment);
-        emit CreditChanged(msg.sender, 1);
-        emit CreditChanged(orders[_orderId].courier, _rating);
+        emit OrderRated(_orderId, orders[_orderId].sender, orders[_orderId].courier, _rating, _comment);
+        emit CreditChanged(msg.sender, 1, "RateOrder");
+        emit CreditChanged(orders[_orderId].courier, _rating, "BeingRated");
     }
 
     // Courier relative functions
@@ -231,7 +251,7 @@ contract LogisticPlatform {
         orders[_orderId].status = OrderStatus.CourierConfirmed;
         orders[_orderId].orderTimestamp.confirmedAt = block.timestamp;
 
-        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.CourierConfirmed);
+        emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "CourierConfirmed");
     }
 
     function refuseOrder(
@@ -245,7 +265,7 @@ contract LogisticPlatform {
         orders[_orderId].courier = address(0);
         orders[_orderId].orderTimestamp.confirmedAt = 0;
 
-        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.Created);
+        emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "Created");
     }
 
     function takeDelivery(
@@ -257,7 +277,7 @@ contract LogisticPlatform {
         orders[_orderId].status = OrderStatus.InTransit;
         orders[_orderId].orderTimestamp.transitBeginAt = block.timestamp;
 
-        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.InTransit);
+        emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "InTransit");
     }
 
     function compeleteDelivery(
@@ -269,7 +289,7 @@ contract LogisticPlatform {
         orders[_orderId].status = OrderStatus.CourierDelivered;
         orders[_orderId].orderTimestamp.transitEndAt = block.timestamp;
 
-        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.CourierDelivered);
+        emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "CourierDelivered");
     }
 
     // receiver相关代码
@@ -282,6 +302,17 @@ contract LogisticPlatform {
         orders[_orderId].status = OrderStatus.ReceiverReceived;
         orders[_orderId].orderTimestamp.receivedAt = block.timestamp;
 
-        emit OrderStatusChanged(_orderId, msg.sender, OrderStatus.ReceiverReceived);
+        emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "ReceiverReceived");
+    }
+
+    // utils functions
+    /*
+    便于前端快速查询订单信息
+    */
+    function queryOrder(
+        uint256 _orderId
+    // ) external onlyParticipant(_orderId) view returns (Order memory) {
+    ) external view returns (Order memory) {
+        return orders[_orderId];
     }
 }
