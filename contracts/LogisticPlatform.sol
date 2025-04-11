@@ -23,7 +23,7 @@ contract LogisticPlatform is Ownable, ErrorCodes {
 
     // 映射
     mapping(uint256 => Order) public orders;
-    mapping(address => uint16) private courierCreditMap;
+    mapping(address => uint256) private courierCreditMap;
     
     // 枚举和结构体
     // 订单状态枚举（对应文档5种状态）
@@ -88,16 +88,13 @@ contract LogisticPlatform is Ownable, ErrorCodes {
         string description; // 物品描述（加密存储）
     }
 
-    mapping(uint256 => Order) public orders;
-    uint256 public orderCounter; // 自增id
-
     // Event
     event OrderCreated(uint256 indexed orderId, address indexed sender, address courier, address indexed receiver, string coarsePickup, string coarseDropoff, uint256 orderValue);  // order创建时，courier不需要为indexed
     event OrderModified(uint256 indexed orderId, address indexed sender, address indexed courier, address receiver,  string coarsePickup, string coarseDropoff, uint256 orderValue);
     event OrderCancelled(uint256 indexed orderId, address indexed sender, address indexed courier, address receiver);
     event OrderStatusChanged(uint256 indexed orderId, address indexed sender, address indexed courier, address receiver, string newStatus);  // 使用string来表示订单状态，是因为定义的枚举不被event支持，导致event无法emit
-    event OrderRated(uint256 indexed orderId, address indexed sender, address indexed courier, int64 credit, string comment);
-    event CreditChanged(address indexed user, int64 credit, string reasonChanged);
+    event OrderRated(uint256 indexed orderId, address indexed sender, address indexed courier, uint256 credit, string comment);
+    event CreditChanged(address indexed user, uint256 credit, string reasonChanged);
     event ProfitDistributed(uint256 indexed timestamp, uint256 bonusPoolAmount, string message);
 
     // modifiers
@@ -176,8 +173,8 @@ contract LogisticPlatform is Ownable, ErrorCodes {
             isRated: false
         });
 
-        emit OrderCreated(orderCounter, msg.sender);
-        emit OrderStatusChanged(orderCounter, msg.sender, "Created");
+        emit OrderCreated(orderCounter, msg.sender, address(0), _receiver, _orderParam.coarsePickup, _orderParam.coarseDropoff, _orderParam.orderValue);
+        emit OrderStatusChanged(orderCounter, msg.sender, address(0), _receiver, "Created");
         
         // 外部交互
         collateralPool.lockToken(msg.sender, amountToLock);
@@ -338,7 +335,7 @@ contract LogisticPlatform is Ownable, ErrorCodes {
      */
     function rateCourier(
         uint256 _orderId,
-        uint8 _rating,
+        uint256 _rating,
         string memory _comment
     ) external {
         Order storage currentOrder = orders[_orderId];
@@ -537,11 +534,11 @@ contract LogisticPlatform is Ownable, ErrorCodes {
                 uint256 remainder = bonusPoolAmount - totalDistributed;
                 if (remainder > 0) {
                     // 找到评分最高的快递员
-                    uint16 highestCredit = 0;
+                    uint256 highestCredit = 0;
                     uint256 highestCourierIndex = 0;
                     
                     for (uint256 i = 0; i < totalCouriers; i++) {
-                        uint16 credit = courierCreditMap[uniqueCouriers[i]];
+                        uint256 credit = courierCreditMap[uniqueCouriers[i]];
                         if (credit > highestCredit) {
                             highestCredit = credit;
                             highestCourierIndex = i;
@@ -589,7 +586,7 @@ contract LogisticPlatform is Ownable, ErrorCodes {
      * 4. 评分16-50区间：增长逐渐放缓，避免头部快递员垄断奖金
      * 5. 评分>50区间：增长最慢，高评分快递员获得稳定但有限的额外分成
      */
-    function calculateScore(uint16 _totalCredit) private pure returns (uint256) {
+    function calculateScore(uint256 _totalCredit) private pure returns (uint256) {
         // 确保至少有1分，避免零分情况
         if (_totalCredit == 0) {
             _totalCredit = 1;
@@ -660,7 +657,7 @@ contract LogisticPlatform is Ownable, ErrorCodes {
         return uniqueCouriers;
     }
 
-    function getCourierCredit(address _courier) external view returns (uint16) {
+    function getCourierCredit(address _courier) external view returns (uint256) {
         return courierCreditMap[_courier];
     }
 
