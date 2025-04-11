@@ -5,16 +5,15 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./CollateralPool.sol";
 
-
 contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     // 状态变量
-    CollateralPool public collateralPool;
-    bool public transferEnabled;
-    bool public paused;
+    CollateralPool private collateralPool;
+    bool private transferEnabled;
+    bool private paused;
     
     // 映射
-    mapping(address => uint256) public lockedBalances;  // 抵押状态代币
-    mapping(address => uint256) public freeBalances;  // 自由状态代币
+    mapping(address => uint256) private lockedBalances;  // 抵押状态代币
+    mapping(address => uint256) private freeBalances;  // 自由状态代币
     // mapping(address => uint256) private _redeemAllowance;  // 可赎回的代币
 
     // 事件
@@ -42,26 +41,8 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         transferEnabled = false;
     }
 
-    // 设置函数
-    function setCollateralPool(address _pool) external onlyOwner {
-        collateralPool = CollateralPool(_pool);
-    }
-
-    function transferTokenOwnership(address _pool) external onlyOwner {
-        require(_pool != address(0), "invalid address");
-        _transferOwnership(_pool);
-    }
-
-    // 代币基本功能
-    // Override transfer functions
-    function transfer(address to, uint256 value) public override onlyCollateralPool returns (bool) {
-        return super.transfer(to, value);
-    }
-
-    function transferFrom(address from, address to, uint256 value) public override onlyCollateralPool returns (bool) {
-        return super.transferFrom(from, to, value);
-    }
-
+    // =================== 核心业务功能 ===================
+    
     // 铸造函数（仅抵押池可调用）
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
@@ -95,15 +76,6 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
         emit TokensFreed(user, amount);
     }
 
-    // 查询函数
-    function getLockedBalance(address user) external view returns(uint256) {
-        return lockedBalances[user];
-    }
-
-    function getFreeBalance(address user) external view returns(uint256) {
-        return freeBalances[user];
-    }
-
     // 安全控制
     function pause() external onlyOwner {
         paused = true;
@@ -113,5 +85,49 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     function unpause() external onlyOwner {
         paused = false;
         emit Unpaused(msg.sender);
+    }
+
+    // 代币基本功能，覆盖ERC20的方法
+    function transfer(address to, uint256 value) public override onlyCollateralPool returns (bool) {
+        return super.transfer(to, value);
+    }
+
+    function transferFrom(address from, address to, uint256 value) public override onlyCollateralPool returns (bool) {
+        return super.transferFrom(from, to, value);
+    }
+
+    // =================== Setter函数 ===================
+    function setCollateralPool(address _pool) external onlyOwner {
+        collateralPool = CollateralPool(_pool);
+    }
+
+    function transferTokenOwnership(address _pool) external onlyOwner {
+        require(_pool != address(0), "invalid address");
+        _transferOwnership(_pool);
+    }
+
+    function setTransferEnabled(bool _enabled) external onlyOwner {
+        transferEnabled = _enabled;
+    }
+
+    // =================== Getter函数 ===================
+    function getCollateralPool() external view returns (address) {
+        return address(collateralPool);
+    }
+
+    function isTransferEnabled() external view returns (bool) {
+        return transferEnabled;
+    }
+
+    function isPaused() external view returns (bool) {
+        return paused;
+    }
+
+    function getLockedBalance(address user) external view returns(uint256) {
+        return lockedBalances[user];
+    }
+
+    function getFreeBalance(address user) external view returns(uint256) {
+        return freeBalances[user];
     }
 }

@@ -17,9 +17,9 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     LogiToken public logiToken;
 
     uint256 public constant DISTRIBUTE_INTERVAL = 30 days; // 分润间隔
-    uint256 public orderCounter; // 自增id
-    uint256 public lastDistributeTime; // 上一次分润时间
-    address[] public ratedCourierList;
+    uint256 private orderCounter; // 自增id
+    uint256 private lastDistributeTime; // 上一次分润时间
+    address[] private ratedCourierList;
 
     // 映射
     mapping(uint256 => Order) public orders;
@@ -628,5 +628,13 @@ contract LogisticPlatform is Ownable, ErrorCodes {
 
     function getCourierCredit(address _courier) external view returns (uint16) {
         return courierCreditMap[_courier];
+    }
+
+    function getOrderCounter() external view returns (uint256) {
+        return orderCounter;
+    }
+
+    function getLastDistributeTime() external view returns (uint256) {
+        return lastDistributeTime;
     }
 }

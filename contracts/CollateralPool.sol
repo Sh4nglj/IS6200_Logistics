@@ -121,29 +121,24 @@ contract CollateralPool {
     }
 
     /**
-     * @dev 锁定用户的代币作为订单抵押
-     * @param user 要锁定代币的用户地址
-     * @param amount 要锁定的代币数量
+     * @dev 向快递员分发确切数量的奖金
+     * @param courier 快递员地址
+     * @param exactAmount 确切的奖金数量
+     * @return 实际分配的奖金数量
      */
-    function lockToken(address user, uint256 amount) external onlyPlatform {
-        token.lockToken(user, amount);
-    }
+    function distributeExactBonusTo(address courier, uint256 exactAmount) external onlyPlatform returns (uint256) {
+        require(courier != address(0), "Invalid courier address");
+        require(bonusPool >= exactAmount, "Insufficient bonus pool");
+        
+        if (exactAmount > 0) {
+            // 从奖金池中减去
+            bonusPool -= exactAmount;
+            
+            // 转账给快递员
+            token.transfer(courier, exactAmount);
+        }
 
-    /**
-     * @dev 释放用户的已锁定代币
-     * @param user 要释放代币的用户地址
-     * @param amount 要释放的代币数量
-     */
-    function freeToken(address user, uint256 amount) external onlyPlatform {
-        token.freeToken(user, amount);
-    }
-
-    /**
-     * @dev 获取当前奖金池金额
-     * @return 奖金池中的代币数量
-     */
-    function getBonusPool() external view returns (uint256) {
-        return bonusPool;
+        return exactAmount;
     }
     
     /**
@@ -161,25 +156,30 @@ contract CollateralPool {
     }
 
     /**
-     * @dev 向快递员分发确切数量的奖金
-     * @param courier 快递员地址
-     * @param exactAmount 确切的奖金数量
-     * @return 实际分配的奖金数量
+     * @dev 锁定用户的代币作为订单抵押
+     * @param user 要锁定代币的用户地址
+     * @param amount 要锁定的代币数量
      */
-    function distributeExactBonusTo(address courier, uint256 exactAmount) external onlyPlatform returns (uint256) {
-        require(courier != address(0), "Invalid courier address");
-        require(bonusPool >= exactAmount, "Insufficient bonus pool");
-        
-        if (exactAmount > 0) {
-            // 从奖金池中减去
-            bonusPool -= exactAmount;
-            
-            emit BonusDistributed(courier, exactAmount, 0); // 0表示不是基于比例
+    function lockToken(address user, uint256 amount) external onlyPlatform {
+        token.lockToken(user, amount);
+    }
 
-            // 转账给快递员
-            token.transfer(courier, exactAmount);
-        }
+    /**
+     * @dev 释放用户的已锁定代币
+     * @param user 要释放代币的用户地址
+     * @param amount 要释放的代币数量
+     */
+    function freeToken(address user, uint256 amount) external onlyPlatform {
+        token.freeToken(user, amount);
+    }
 
-        return exactAmount;
+    // ---------- Setter 和 Getter 函数 ----------
+    
+    /**
+     * @dev 获取当前奖金池金额
+     * @return 奖金池中的代币数量
+     */
+    function getBonusPoolAmount() external view returns (uint256) {
+        return bonusPool;
     }
 }
