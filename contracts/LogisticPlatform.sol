@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "./CollateralPool.sol";
 import "./LogiToken.sol";
 import "./ErrorCodes.sol";
+import "./libraries/OrderLib.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -12,6 +13,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev 管理物流平台的订单流程、评分系统和分润机制
  */
 contract LogisticPlatform is Ownable, ErrorCodes {
+    using OrderLib for OrderLib.Order;
+
     // 状态变量
     CollateralPool public collateralPool;
     LogiToken public logiToken;
@@ -22,71 +25,8 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     address[] private ratedCourierList;
 
     // 映射
-    mapping(uint256 => Order) private orders;
+    mapping(uint256 => OrderLib.Order) public orders;
     mapping(address => uint256) private courierCreditMap;
-    
-    // 枚举和结构体
-    // 订单状态枚举（对应文档5种状态）
-    enum OrderStatus {
-        Created,     // 已创建
-        SenderConfirmed,   // sender已确认
-        CourierConfirmed,  // courier已确认
-        SenderDelivered, // sender已发货
-        InTransit,   // 运输中                  
-        CourierDelivered,   // 已送达
-        ReceiverReceived,   // 收货人已收到
-        Finished,    // 已完成
-        Cancelled    // 已取消
-    }
-
-    enum CreditChangeReason {
-        FinishOrder,
-        TransportOrder,
-        RateOrder,
-        BeingRated,
-        Punishment,
-        WinArgue,
-        LoseArgue
-    }
-
-    // 订单结构体（核心数据结构）
-    struct Order {                  
-        uint256 id;                // 订单ID
-        address sender;            // 发货人地址
-        address courier;           // 承运人地址（初始为0）
-        address receiver;          // 收货人地址
-        OrderTimestamp orderTimestamp;  // 订单时间戳
-        OrderStatus status;        // 当前状态
-        OrderParam orderParam;     // 订单参数
-        ItemInfo item;             // 物品详细信息
-        bool isRated;
-    }
-
-    struct OrderTimestamp {
-        uint256 createdAt;         // 创建时间戳
-        uint256 assignedAt;
-        uint256 confirmedAt;       // 确认时间戳
-        uint256 transitBeginAt;       // 开始运输时间
-        uint256 transitEndAt;       // 结束运输时间
-        uint256 receivedAt;
-        uint256 finishedAt;        // 完成时间戳
-        uint256 canceledAt;        // 取消时间戳
-    }
-
-    // 订单信息 
-    struct OrderParam {
-        string coarsePickup;      // 粗粒度发货地
-        string coarseDropoff;     // 粗粒度收货地
-        uint256 depositAmount;     // 押金要求（ETH单位）
-        uint256 orderValue;        // 订单总金额（wei单位）
-    }
-
-    // 物品信息子结构
-    struct ItemInfo {
-        uint256 volume;    // 体积（立方厘米）
-        uint256 weight;    // 重量（克）
-        string description; // 物品描述（加密存储）
-    }
 
     // Event
     event OrderCreated(uint256 indexed orderId, address indexed sender, address courier, address indexed receiver, string coarsePickup, string coarseDropoff, uint256 orderValue);  // order创建时，courier不需要为indexed
@@ -139,8 +79,8 @@ contract LogisticPlatform is Ownable, ErrorCodes {
      */
     function createOrder(
         address _receiver, 
-        OrderParam memory _orderParam, 
-        ItemInfo memory _itemInfo
+        OrderLib.OrderParam memory _orderParam, 
+        OrderLib.ItemInfo memory _itemInfo
     ) external returns (uint256) {
         require(logiToken.getFreeBalance(msg.sender) >= _orderParam.orderValue, E3);
         
@@ -149,30 +89,10 @@ contract LogisticPlatform is Ownable, ErrorCodes {
         
         // 状态更改
         orderCounter++;
-        
-        OrderTimestamp memory _orderTimestamp = OrderTimestamp({
-            createdAt: block.timestamp,
-            assignedAt: 0,
-            confirmedAt: 0,
-            transitBeginAt: 0,
-            receivedAt: 0,
-            transitEndAt: 0,
-            canceledAt: 0,
-            finishedAt: 0
-        });
 
-        orders[orderCounter] = Order({
-            id: orderCounter,
-            sender: msg.sender,
-            courier: address(0),
-            receiver: _receiver,
-            orderTimestamp: _orderTimestamp,
-            status: OrderStatus.Created,
-            orderParam: _orderParam,
-            item: _itemInfo,
-            isRated: false
-        });
-
+        OrderLib.Order storage newOrder = orders[orderCounter];
+        newOrder.initNewOrder(orderCounter, msg.sender, _receiver, _orderParam, _itemInfo);
+        orders[orderCounter] = newOrder;
         emit OrderCreated(orderCounter, msg.sender, address(0), _receiver, _orderParam.coarsePickup, _orderParam.coarseDropoff, _orderParam.orderValue);
         emit OrderStatusChanged(orderCounter, msg.sender, address(0), _receiver, "Created");
         
@@ -192,12 +112,12 @@ contract LogisticPlatform is Ownable, ErrorCodes {
      */
     function modifyOrder(
         uint256 _orderId,
-        OrderParam memory _orderParam, 
-        ItemInfo memory _itemInfo
+        OrderLib.OrderParam memory _orderParam, 
+        OrderLib.ItemInfo memory _itemInfo
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
-        require(currentOrder.status == OrderStatus.Created, E4);
+        require(currentOrder.status == OrderLib.OrderStatus.Created, E4);
         require(msg.sender == currentOrder.sender, E5);
 
         uint256 oldOrderValue = currentOrder.orderParam.orderValue;
@@ -226,12 +146,12 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     function cancelOrder(
         uint256 _orderId
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.sender, E7);
         require(
-            currentOrder.status == OrderStatus.Created || currentOrder.status == OrderStatus.SenderConfirmed || 
-            currentOrder.status == OrderStatus.CourierConfirmed,
+            currentOrder.status == OrderLib.OrderStatus.Created || currentOrder.status == OrderLib.OrderStatus.SenderConfirmed || 
+            currentOrder.status == OrderLib.OrderStatus.CourierConfirmed,
             E8
         );
 
@@ -240,7 +160,7 @@ contract LogisticPlatform is Ownable, ErrorCodes {
         uint256 orderValue = currentOrder.orderParam.orderValue;
         
         // 状态更改 (Effects)
-        currentOrder.status = OrderStatus.Cancelled;
+        currentOrder.status = OrderLib.OrderStatus.Cancelled;
         currentOrder.orderTimestamp.canceledAt = block.timestamp;
 
         emit OrderCancelled(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver);
@@ -261,13 +181,13 @@ contract LogisticPlatform is Ownable, ErrorCodes {
         uint256 _orderId,
         address _courier
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.sender, E9);
-        require(currentOrder.status == OrderStatus.Created, E10);
+        require(currentOrder.status == OrderLib.OrderStatus.Created, E10);
         require(_courier != address(0), E11);
 
-        currentOrder.status = OrderStatus.SenderConfirmed;
+        currentOrder.status = OrderLib.OrderStatus.SenderConfirmed;
         currentOrder.courier = _courier;
         orders[_orderId].orderTimestamp.assignedAt = block.timestamp;
 
@@ -283,12 +203,12 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     function sendDelivery(
         uint256 _orderId
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.sender, E12);
-        require(currentOrder.status == OrderStatus.CourierConfirmed, E13);
+        require(currentOrder.status == OrderLib.OrderStatus.CourierConfirmed, E13);
 
-        currentOrder.status = OrderStatus.SenderDelivered;
+        currentOrder.status = OrderLib.OrderStatus.SenderDelivered;
 
         emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "SenderDelivered");
     }
@@ -301,10 +221,10 @@ contract LogisticPlatform is Ownable, ErrorCodes {
      * 完成后解锁快递员的押金并结算订单金额
      */
     function finishOrder(uint256 _orderId) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.sender, E14);
-        require(currentOrder.status == OrderStatus.ReceiverReceived, E15);
+        require(currentOrder.status == OrderLib.OrderStatus.ReceiverReceived, E15);
         
         // 保存状态变量，防止重入攻击时引用旧值
         address courier = currentOrder.courier;
@@ -312,7 +232,7 @@ contract LogisticPlatform is Ownable, ErrorCodes {
         uint256 orderValue = currentOrder.orderParam.orderValue;
         
         // 状态更改 (Effects)
-        currentOrder.status = OrderStatus.Finished;
+        currentOrder.status = OrderLib.OrderStatus.Finished;
         currentOrder.orderTimestamp.finishedAt = block.timestamp;
         
         emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "Finished");
@@ -338,10 +258,10 @@ contract LogisticPlatform is Ownable, ErrorCodes {
         uint256 _rating,
         string memory _comment
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.sender, E16);
-        require(currentOrder.status == OrderStatus.Finished, E17);
+        require(currentOrder.status == OrderLib.OrderStatus.Finished, E17);
         require(!currentOrder.isRated, E18);
         require(_rating >= 1 && _rating <= 5, E19);
 
@@ -365,15 +285,15 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     function takeOrder(
         uint256 _orderId
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.courier, E20);
-        require(currentOrder.status == OrderStatus.SenderConfirmed, E21);
+        require(currentOrder.status == OrderLib.OrderStatus.SenderConfirmed, E21);
         require(logiToken.getFreeBalance(msg.sender) >= currentOrder.orderParam.depositAmount, E22);
        
         collateralPool.lockToken(msg.sender, currentOrder.orderParam.depositAmount);
 
-        currentOrder.status = OrderStatus.CourierConfirmed;
+        currentOrder.status = OrderLib.OrderStatus.CourierConfirmed;
         currentOrder.orderTimestamp.confirmedAt = block.timestamp;
 
         emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "CourierConfirmed");
@@ -389,17 +309,17 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     function refuseOrder(
         uint256 _orderId
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.courier, E23);
-        require(currentOrder.status == OrderStatus.CourierConfirmed, E24);
+        require(currentOrder.status == OrderLib.OrderStatus.CourierConfirmed, E24);
         
         // 保存状态变量，防止重入攻击
         address courier = msg.sender;
         uint256 depositAmount = currentOrder.orderParam.depositAmount;
         
         // 状态更改 (Effects)
-        currentOrder.status = OrderStatus.Created;
+        currentOrder.status = OrderLib.OrderStatus.Created;
         currentOrder.courier = address(0);
         currentOrder.orderTimestamp.confirmedAt = 0;
 
@@ -418,12 +338,12 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     function takeDelivery(
         uint256 _orderId
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.courier, E25);
-        require(currentOrder.status == OrderStatus.SenderDelivered, E26);
+        require(currentOrder.status == OrderLib.OrderStatus.SenderDelivered, E26);
 
-        currentOrder.status = OrderStatus.InTransit;
+        currentOrder.status = OrderLib.OrderStatus.InTransit;
         currentOrder.orderTimestamp.transitBeginAt = block.timestamp;
 
         emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "InTransit");
@@ -438,12 +358,12 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     function compeleteDelivery(
         uint256 _orderId
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.courier, E27);
-        require(currentOrder.status == OrderStatus.InTransit, E28);
+        require(currentOrder.status == OrderLib.OrderStatus.InTransit, E28);
 
-        currentOrder.status = OrderStatus.CourierDelivered;
+        currentOrder.status = OrderLib.OrderStatus.CourierDelivered;
         currentOrder.orderTimestamp.transitEndAt = block.timestamp;
 
         emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "CourierDelivered");
@@ -458,12 +378,12 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     function receiveDelivery(
         uint256 _orderId
     ) external {
-        Order storage currentOrder = orders[_orderId];
+        OrderLib.Order storage currentOrder = orders[_orderId];
 
         require(msg.sender == currentOrder.receiver, E29);
-        require(currentOrder.status == OrderStatus.CourierDelivered, E30);
+        require(currentOrder.status == OrderLib.OrderStatus.CourierDelivered, E30);
 
-        currentOrder.status = OrderStatus.ReceiverReceived;
+        currentOrder.status = OrderLib.OrderStatus.ReceiverReceived;
         currentOrder.orderTimestamp.receivedAt = block.timestamp;
 
         emit OrderStatusChanged(_orderId, orders[_orderId].sender, orders[_orderId].courier, orders[_orderId].receiver, "ReceiverReceived");
@@ -476,7 +396,7 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     function queryOrder(
         uint256 _orderId
     // ) external onlyParticipant(_orderId) view returns (Order memory) {
-    ) external view returns (Order memory) {
+    ) external view returns (OrderLib.Order memory) {
         return orders[_orderId];
     }
 
