@@ -22,7 +22,7 @@ Today's logistics industry faces several key issues:
 
 #### 2.2 Our Solution
 
-Our solution uses blockchain technology to achieve dynamic resource utilization. It makes transaction records transparent. It lowers entry barriers for small businesses and individuals. It also empowers the community and enhances fairness. 
+Our solution uses blockchain technology to achieve dynamic resource utilization. It makes transaction records transparent. It lowers entry barriers for small businesses and individuals. 
 
 ---
 
@@ -36,27 +36,28 @@ The logistics industry is a rapidly growing market. Our solution has huge potent
 
 Our blockchain solution has three core goals:
 
-1. **Smart Contract Auto-Coordination**: We connect senders, couriers, and receivers through Ethereum. This ensures full traceability and automated processes.
+1. Smart Contract Auto-Coordination
 
-2. **Elimination of Third-party Intermediaries**: We remove the need for central payment processors or validation systems. This reduces costs and improves efficiency.
+2. Elimination of Third-party Intermediaries
 
-3. **Cryptographic Authority Replacement**: Trust is based on blockchain consensus rather than centralized authorities. This improves system reliability and security.
+3. Cryptographic Authority Replacement
 
 ---
 
 ### 4. System Framework (50 seconds)
 
-Our system consists of two layers:
+Our system has of two layers:
 
 **Core Contract Layer**:
-- LogisticPlatform.sol: Main platform contract that manages the order process
-- CollateralPool.sol: Manages the collateral pool, stores pledged ETH, and mints LogiToken
-- LogiToken.sol: Platform token with locking/releasing mechanisms
+- LogisticPlatform is the main platform that manages the order process
+- CollateralPool stores pledged ETH and manages LogiToken
+- LogiToken is the platform token with locking/releasing mechanisms
 
 **Interaction Layer**:
-- Sender: Creates orders, confirms handovers, evaluates service
-- Courier: Accepts orders, delivers, confirms delivery
-- Receiver: Confirms receipt
+
+- Sender
+- Courier
+- Receiver
 
 All parties exchange information securely and transparently through the Ethereum blockchain. This ensures reliability throughout the logistics process.
 
@@ -64,11 +65,11 @@ All parties exchange information securely and transparently through the Ethereum
 
 ### 5. Main Process (60 seconds)
 
-Our platform streamlines the entire logistics journey from order creation to payment settlement. The process begins with the sender creating an order and selecting a courier. After the courier accepts the assignment, the package moves through a series of verification steps.
+Our platform streamlines the entire logistics journey from order creation to payment settlement. 
 
-Each delivery status change requires confirmation from the relevant stakeholder - sender confirms shipping, courier confirms pickup and delivery, and receiver confirms receipt. This multi-signature approach ensures accountability at every step.
+Each delivery status change requires confirmation from the relevant stakeholder. This multi-signature approach ensures accountability at every step.
 
-The process concludes with sender evaluation and automatic payment distribution based on our predetermined ratios. The entire workflow is tracked on the blockchain, providing transparency and security for all parties.
+The entire workflow is tracked on the blockchain, providing transparency and security for all parties.
 
 ---
 
@@ -76,19 +77,21 @@ The process concludes with sender evaluation and automatic payment distribution 
 
 Our platform contains four core functional modules:
 
-1. **Order Management System**: Creation, confirmation, modification, and cancellation of orders. Multiple parties participate in status confirmation. Complete order status tracking is available.
+1. Order Management System
 
-2. **Token Collateral System**: ETH exchange for LogiToken. Order locking mechanism ensures transaction security.
+2. Token Collateral System
 
-3. **Reputation Rating System**: Ratings directly affect future reward distribution. Evaluation records are immutable on the blockchain.
+3. Reputation Rating System
 
-4. **Profit Distribution System**: Order revenues are automatically distributed proportionally. The bonus pool incentivizes high-quality service.
+4. Profit Distribution System
 
 ---
 
 ### 7. Token and Deposit Mechanism (30 seconds)
 
 LogiToken is our platform-specific token. It is pegged 1:1 with ETH. It supports dual management of free and locked states. Users can redeem it for ETH at any time.
+
+---
 
 The platform automatically locks tokens when creating orders. It unlocks and distributes them after order completion. It also has a refund mechanism for exceptional situations. This ensures system security and liquidity.
 
@@ -97,11 +100,11 @@ The platform automatically locks tokens when creating orders. It unlocks and dis
 ### 8. Profit Distribution Mechanism (30 seconds)
 
 Our profit distribution ratio is:
-- 80% to couriers
+- Only 80% directly to couriers
 - 17.5% to the bonus pool
 - 2.5% to the platform
 
-The bonus pool distribution is based on courier reputation ratings. Distribution is automatically triggered every 30 days. This incentivizes high-quality service providers and creates a positive cycle.
+The bonus pool distribution is based on courier reputation ratings, which means courier can get more or less than the origianl delivery fee depends on the behavior. Distribution is automatically triggered every 30 days. This incentivizes high-quality service providers and creates a positive cycle.
 
 ---
 
