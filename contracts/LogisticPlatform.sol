@@ -458,7 +458,7 @@ contract LogisticPlatform is Ownable, ErrorCodes {
         require(collateralPool.owner() == msg.sender, E31);
         require(block.timestamp - lastDistributeTime >= DISTRIBUTE_INTERVAL, E32);     
 
-        uint256 bonusPoolAmount = collateralPool.getBonusPool();
+        uint256 bonusPoolAmount = collateralPool.getBonusPoolAmount();
         require(bonusPoolAmount > 0, E33);
         
         uint256 courierCount = ratedCourierList.length;
