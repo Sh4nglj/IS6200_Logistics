@@ -35,27 +35,27 @@ describe("物流平台分成功能测试", function () {
     // 部署 LogiToken 合约
     const LogiToken = await ethers.getContractFactory("LogiToken");
     logiToken = await LogiToken.deploy();
-    await logiToken.deployed();
-    console.log("LogiToken 合约已部署:", logiToken.address);
+    await logiToken.waitForDeployment();
+    console.log("LogiToken 合约已部署:", logiToken.target);
     
     // 部署 LogisticPlatform 合约
     const LogisticPlatform = await ethers.getContractFactory("LogisticPlatform");
     logisticPlatform = await LogisticPlatform.deploy();
-    await logisticPlatform.deployed();
-    console.log("LogisticPlatform 合约已部署:", logisticPlatform.address);
+    await logisticPlatform.waitForDeployment();
+    console.log("LogisticPlatform 合约已部署:", logisticPlatform.target);
     
     // 部署 CollateralPool 合约
     const CollateralPool = await ethers.getContractFactory("CollateralPool");
-    collateralPool = await CollateralPool.deploy(logiToken.address, logisticPlatform.address);
-    await collateralPool.deployed();
-    console.log("CollateralPool 合约已部署:", collateralPool.address);
+    collateralPool = await CollateralPool.deploy(logiToken.target, logisticPlatform.target);
+    await collateralPool.waitForDeployment();
+    console.log("CollateralPool 合约已部署:", collateralPool.target);
     
     // 设置 LogisticPlatform 的 CollateralPool 和 LogiToken
-    await logisticPlatform.setCollateralPool(collateralPool.address);
-    await logisticPlatform.setLogiToken(logiToken.address);
+    await logisticPlatform.setCollateralPool(collateralPool.target);
+    await logisticPlatform.setLogiToken(logiToken.target);
     
     // 设置 LogiToken 的 CollateralPool
-    await logiToken.setCollateralPool(collateralPool.address);
+    await logiToken.setCollateralPool(collateralPool.target);
     
     console.log("合约部署和初始化完成");
   });
@@ -65,22 +65,22 @@ describe("物流平台分成功能测试", function () {
     console.log("为测试账户充值代币...");
     
     // 为发送方1充值
-    await collateralPool.connect(sender1).deposit({ value: ethers.utils.parseEther("5") });
+    await collateralPool.connect(sender1).deposit({ value: ethers.parseEther("5") });
     
     // 为发送方2充值
-    await collateralPool.connect(sender2).deposit({ value: ethers.utils.parseEther("5") });
+    await collateralPool.connect(sender2).deposit({ value: ethers.parseEther("5") });
     
     // 为快递员充值（用于抵押）
-    await collateralPool.connect(courier1).deposit({ value: ethers.utils.parseEther("2") });
-    await collateralPool.connect(courier2).deposit({ value: ethers.utils.parseEther("2") });
-    await collateralPool.connect(courier3).deposit({ value: ethers.utils.parseEther("2") });
+    await collateralPool.connect(courier1).deposit({ value: ethers.parseEther("2") });
+    await collateralPool.connect(courier2).deposit({ value: ethers.parseEther("2") });
+    await collateralPool.connect(courier3).deposit({ value: ethers.parseEther("2") });
     
     // 检查余额
     const sender1Balance = await logiToken.getFreeBalance(sender1.address);
     const courier1Balance = await logiToken.getFreeBalance(courier1.address);
     
-    console.log("发送方1余额:", ethers.utils.formatEther(sender1Balance));
-    console.log("快递员1余额:", ethers.utils.formatEther(courier1Balance));
+    console.log("发送方1余额:", ethers.formatEther(sender1Balance));
+    console.log("快递员1余额:", ethers.formatEther(courier1Balance));
     
     expect(sender1Balance).to.be.gt(0);
     expect(courier1Balance).to.be.gt(0);
@@ -103,8 +103,8 @@ describe("物流平台分成功能测试", function () {
       const orderParam = {
         coarsePickup: "北京市海淀区",
         coarseDropoff: "上海市浦东新区",
-        depositAmount: ethers.utils.parseEther("0.1"),  // 押金0.1 ETH
-        orderValue: ethers.utils.parseEther("0.2")      // 订单金额0.2 ETH
+        depositAmount: ethers.parseEther("0.1"),  // 押金0.1 ETH
+        orderValue: ethers.parseEther("0.2")      // 订单金额0.2 ETH
       };
       
       const itemInfo = {
@@ -196,15 +196,15 @@ describe("物流平台分成功能测试", function () {
   // 检查奖金池金额
   it("检查奖金池金额", async function () {
     const bonusPoolAmount = await collateralPool.getBonusPool();
-    console.log("奖金池金额:", ethers.utils.formatEther(bonusPoolAmount), "ETH");
+    console.log("奖金池金额:", ethers.formatEther(bonusPoolAmount), "ETH");
     
     // 验证奖金池不为0
     expect(bonusPoolAmount).to.be.gt(0);
     
     // 理论上，每个订单金额为0.2 ETH，其中17.5%进入奖金池
     // 10个订单总共应该有 10 * 0.2 * 0.175 = 0.35 ETH进入奖金池
-    const expectedBonus = ethers.utils.parseEther("0.35");
-    expect(bonusPoolAmount).to.be.closeTo(expectedBonus, ethers.utils.parseEther("0.01"));
+    const expectedBonus = ethers.parseEther("0.35");
+    expect(bonusPoolAmount).to.be.closeTo(expectedBonus, ethers.parseEther("0.01"));
   });
 
   // 触发分成
@@ -217,9 +217,9 @@ describe("物流平台分成功能测试", function () {
     const beforeBalance3 = await logiToken.balanceOf(courier3.address);
     
     console.log("分成前余额:");
-    console.log("- 快递员1:", ethers.utils.formatEther(beforeBalance1), "ETH");
-    console.log("- 快递员2:", ethers.utils.formatEther(beforeBalance2), "ETH");
-    console.log("- 快递员3:", ethers.utils.formatEther(beforeBalance3), "ETH");
+    console.log("- 快递员1:", ethers.formatEther(beforeBalance1), "ETH");
+    console.log("- 快递员2:", ethers.formatEther(beforeBalance2), "ETH");
+    console.log("- 快递员3:", ethers.formatEther(beforeBalance3), "ETH");
     
     // 时间推进到可以分成的时间点（30天后）
     await time.increase(30 * 24 * 60 * 60);
@@ -234,9 +234,9 @@ describe("物流平台分成功能测试", function () {
     const afterBalance3 = await logiToken.balanceOf(courier3.address);
     
     console.log("分成后余额:");
-    console.log("- 快递员1:", ethers.utils.formatEther(afterBalance1), "ETH");
-    console.log("- 快递员2:", ethers.utils.formatEther(afterBalance2), "ETH");
-    console.log("- 快递员3:", ethers.utils.formatEther(afterBalance3), "ETH");
+    console.log("- 快递员1:", ethers.formatEther(afterBalance1), "ETH");
+    console.log("- 快递员2:", ethers.formatEther(afterBalance2), "ETH");
+    console.log("- 快递员3:", ethers.formatEther(afterBalance3), "ETH");
     
     // 计算增加的余额
     const increase1 = afterBalance1.sub(beforeBalance1);
@@ -244,9 +244,9 @@ describe("物流平台分成功能测试", function () {
     const increase3 = afterBalance3.sub(beforeBalance3);
     
     console.log("增加的余额:");
-    console.log("- 快递员1:", ethers.utils.formatEther(increase1), "ETH");
-    console.log("- 快递员2:", ethers.utils.formatEther(increase2), "ETH");
-    console.log("- 快递员3:", ethers.utils.formatEther(increase3), "ETH");
+    console.log("- 快递员1:", ethers.formatEther(increase1), "ETH");
+    console.log("- 快递员2:", ethers.formatEther(increase2), "ETH");
+    console.log("- 快递员3:", ethers.formatEther(increase3), "ETH");
     
     // 由于快递员1获得高分，理论上应该获得更多奖励
     expect(increase1).to.be.gt(increase2);
@@ -257,7 +257,7 @@ describe("物流平台分成功能测试", function () {
     
     // 检查奖金池是否清零或接近于0
     const finalBonusPool = await collateralPool.getBonusPool();
-    console.log("分成后奖金池余额:", ethers.utils.formatEther(finalBonusPool), "ETH");
-    expect(finalBonusPool).to.be.lt(ethers.utils.parseEther("0.01"));
+    console.log("分成后奖金池余额:", ethers.formatEther(finalBonusPool), "ETH");
+    expect(finalBonusPool).to.be.lt(ethers.parseEther("0.01"));
   });
 }); 
