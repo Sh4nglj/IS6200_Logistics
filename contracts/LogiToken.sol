@@ -42,7 +42,8 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     }
 
     // 设置函数
-    function setCollateralPool(address _pool) external onlyOwner {
+    // TODO: 应该为onlyOwner
+    function setCollateralPool(address _pool) external {
         collateralPool = CollateralPool(_pool);
     }
 

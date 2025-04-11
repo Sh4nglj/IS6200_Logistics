@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "./CollateralPool.sol";
 import "./LogiToken.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title 物流平台合约
@@ -79,8 +80,8 @@ contract LogisticPlatform {
     event OrderModified(uint256 indexed orderId, address indexed sender);
     event OrderCancelled(uint256 indexed orderId, address indexed sender);
     event OrderStatusChanged(uint256 indexed orderId, address indexed emitter, OrderStatus newStatus);
-    event OrderRated(uint256 indexed orderId, address indexed sender, int64 credit, string comment);
-    event CreditChanged(address indexed user, int64 credit);
+    event OrderRated(uint256 indexed orderId, address indexed sender, int8 credit, string comment);
+    event CreditChanged(address indexed user, int8 credit);
     event ProfitDistributed(uint256 indexed timestamp, uint256 bonusPoolAmount, string message);
 
     /**
@@ -301,9 +302,9 @@ contract LogisticPlatform {
         courierCreditMap[currentOrder.courier] += _rating;
         currentOrder.isRated = true;
 
-        emit OrderRated(_orderId, msg.sender, _rating, _comment);
-        emit CreditChanged(msg.sender, 1);
-        emit CreditChanged(currentOrder.courier, _rating);
+        emit OrderRated(_orderId, msg.sender, int8(_rating), _comment);
+        emit CreditChanged(msg.sender, int8(1));
+        emit CreditChanged(currentOrder.courier, int8(_rating));
     }
 
     /**
@@ -459,7 +460,7 @@ contract LogisticPlatform {
                     
                     // 调用CollateralPool的分润函数
                     uint256 courierBonus = collateralPool.distributeBonusTo(courier, shareRatio);
-                    message = string.concat(message, ";", Strings.toHexString(uint256(courier), 20), "_", Strings.toString(courierBonus));
+                    message = string.concat(message, ";", Strings.toHexString(uint160(courier), 20), "_", Strings.toString(courierBonus));
                 }
                 
                 // 触发分润完成事件
@@ -467,7 +468,6 @@ contract LogisticPlatform {
                 
                 // 重置评分数据
                 delete ratedCourierList;
-                delete courierCreditMap;
             }
         }
     }
@@ -526,36 +526,32 @@ contract LogisticPlatform {
     function getUniqueCouriers() private view returns (address[] memory) {
         uint256 courierCount = ratedCourierList.length;
         
-        // 使用映射跟踪已添加的快递员
-        mapping(address => bool) memory added;
+        // 先计算有多少个唯一快递员
+        address[] memory allCouriers = new address[](courierCount);
         uint256 uniqueCount = 0;
         
-        // 第一遍遍历，计算唯一快递员数量
         for (uint256 i = 0; i < courierCount; i++) {
             address courier = ratedCourierList[i];
-            if (!added[courier]) {
-                added[courier] = true;
+            bool found = false;
+            
+            // 检查此快递员是否已包含在我们的列表中
+            for (uint256 j = 0; j < uniqueCount; j++) {
+                if (allCouriers[j] == courier) {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                allCouriers[uniqueCount] = courier;
                 uniqueCount++;
             }
         }
         
-        // 创建结果数组
+        // 创建精确大小的结果数组
         address[] memory uniqueCouriers = new address[](uniqueCount);
-        
-        // 重置跟踪映射
-        for (uint256 i = 0; i < courierCount; i++) {
-            added[ratedCourierList[i]] = false;
-        }
-        
-        // 第二遍遍历，填充唯一快递员数组
-        uint256 index = 0;
-        for (uint256 i = 0; i < courierCount; i++) {
-            address courier = ratedCourierList[i];
-            if (!added[courier]) {
-                added[courier] = true;
-                uniqueCouriers[index] = courier;
-                index++;
-            }
+        for (uint256 i = 0; i < uniqueCount; i++) {
+            uniqueCouriers[i] = allCouriers[i];
         }
         
         return uniqueCouriers;
