@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Logistics Platform</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            height: 100%;
+            overflow: hidden;
+        }
+        .slide {
+            height: 100vh;
+            width: 100vw;
+            display: none;
+            padding: 50px;
+            box-sizing: border-box;
+            background-color: #f5f5f5;
+            position: relative;
+        }
+        .active {
+            display: block;
+        }
+        .slide-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 42px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #3498db;
+            font-size: 32px;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+        ul {
+            font-size: 20px;
+            line-height: 1.6;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        code {
+            font-family: 'Courier New', monospace;
+        }
+        .slide-number {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 16px;
+            color: #7f8c8d;
+        }
+        .footnote {
+            position: absolute;
+            bottom: 60px;
+            font-size: 14px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        img {
+            max-width: 100%;
+            max-height: 70vh;
+            display: block;
+            margin: 20px auto;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .image-slide .slide-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        /* 打印优化样式 */
+        @media print {
+            @page {
+                size: landscape;
+                margin: 0;
+            }
+            
+            body, html {
+                height: auto;
+                overflow: visible;
+                background-color: #f5f5f5;
+                width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .slide {
+                page-break-after: always;
+                page-break-inside: avoid;
+                display: block !important;
+                height: 100vh;
+                width: 100%;
+                max-height: 100%;
+                position: relative;
+                padding: 50px;
+                margin: 0;
+                box-sizing: border-box;
+            }
+            
+            .slide:last-child {
+                page-break-after: avoid;
+            }
+            
+            .slide-content {
+                max-width: 100%;
+                height: 100%;
+                margin: 0 auto;
+                position: relative;
+            }
+            
+            h1 {
+                font-size: 38px;
+            }
+            
+            h2 {
+                font-size: 28px;
+            }
+            
+            img {
+                max-height: 60vh;
+            }
+            
+            .slide-number {
+                position: absolute;
+                bottom: 20px;
+                left: 20px;
+            }
+            
+            pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Title -->
+    <div class="slide active" id="slide1">
+        <div class="slide-content">
+            <h1>Blockchain Logistics Platform</h1>
+            <h2>6200 Group: A Decentralized Solution Based on Ethereum</h2>
+            <div style="display: flex; margin-top: 40px;">
+                <div style="flex: 1;">
+                    <p style="font-size: 18px; line-height: 1.8;">
+                        <strong>XU Jin</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;58901449<br>
+                        <strong>BI Wenbo</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;58896681<br>
+                        <strong>LI Mingshan</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;58817553
+                    </p>
+                </div>
+                <div style="flex: 1;">
+                    <p style="font-size: 18px; line-height: 1.8;">
+                        <strong>ZHANG Yingqi</strong> &nbsp;&nbsp;&nbsp;&nbsp;59129780<br>
+                        <strong>SHANG Linjie</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;58972590<br>
+                        <strong>LU Yiyang</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;59050360
+                    </p>
+                </div>
+            </div>
+            <div class="footnote">Decentralized Logistics Platform Project</div>
+        </div>
+        <div class="slide-number">1</div>
+    </div>
+
+    <!-- Slide 2: Logistics Market Growth Chart -->
+    <div class="slide image-slide" id="slide2">
+        <div class="slide-content">
+            <h1>Logistics Market Growth (2023-2033)</h1>
+            <img src="slide_pic/growth_rate.png" alt="Logistics Market Growth Rate" />
+        </div>
+        <div class="slide-number">2</div>
+    </div>
+
+    <!-- Slide 3: Business Background Pt.1 -->
+    <div class="slide" id="slide3">
+        <div class="slide-content">
+            <h1>Business Background</h1>
+            <h2>Problems with Existing Centralized Logistics Platforms</h2>
+            <ul>
+                <li>Platform monopoly and unfairness</li>
+                <li>Imbalanced profit distribution reducing couriers' income</li>
+                <li>Data control and privacy issues</li>
+                <li>Lack of transparency leading to information asymmetry</li>
+            </ul>
+        </div>
+        <div class="slide-number">3</div>
+    </div>
+
+    <!-- Slide 4: Blockchain Solution -->
+    <div class="slide" id="slide4">
+        <div class="slide-content">
+            <h1>Blockchain Solution Goals</h1>
+            <h2>Smart Contract Auto-Coordination</h2>
+            <ul>
+                <li>Connecting senders/couriers/receivers via Ethereum</li>
+                <li>Ensuring traceability and automated processes</li>
+            </ul>
+            <h2>Eliminates Third-party Intermediaries</h2>
+            <ul>
+                <li>No central payment processors or validation systems needed</li>
+            </ul>
+            <h2>Cryptographic Authority Replacement</h2>
+            <ul>
+                <li>Trust established through blockchain consensus rather than centralized authorities</li>
+            </ul>
+        </div>
+        <div class="slide-number">4</div>
+    </div>
+
+    <!-- Slide 5: Business Background Pt.2 -->
+    <div class="slide" id="slide5">
+        <div class="slide-content">
+            <h1>Business Background</h1>
+            <h2>Our Decentralized Logistics Platform</h2>
+            <ul>
+                <li>Dynamic resource utilization to improve efficiency</li>
+                <li>Transparent transaction records to reduce disputes</li>
+                <li>Lowering entry barriers for small businesses and individuals</li>
+                <li>Empowering the community, enhancing fairness</li>
+            </ul>
+        </div>
+        <div class="slide-number">5</div>
+    </div>
+
+
+    <!-- Slide 6: System Framework Pt.1 -->
+    <div class="slide" id="slide6">
+        <div class="slide-content">
+            <h1>System Framework</h1>
+            <h2>Core Contract Layer</h2>
+            <ul>
+                <li><strong>LogisticPlatform.sol</strong>: Main platform contract, manages order process</li>
+                <li><strong>CollateralPool.sol</strong>: Collateral pool management, stores pledged ETH and mints LogiToken</li>
+                <li><strong>LogiToken.sol</strong>: Platform token, supports locking/releasing mechanism</li>
+            </ul>
+        </div>
+        <div class="slide-number">6</div>
+    </div>
+
+    <!-- Slide 7: System Framework Pt.2 -->
+    <div class="slide" id="slide7">
+        <div class="slide-content">
+            <h1>System Framework</h1>
+            <h2>Interaction Layer</h2>
+            <ul>
+                <li><strong>Sender</strong>: Creates orders, confirms handover, evaluates service</li>
+                <li><strong>Courier</strong>: Accepts orders, delivers, confirms delivery</li>
+                <li><strong>Receiver</strong>: Confirms receipt</li>
+                <li>Secure and transparent information exchange through Ethereum blockchain</li>
+            </ul>
+        </div>
+        <div class="slide-number">7</div>
+    </div>
+
+    <!-- Slide 8: Main Process Pt.1 -->
+    <div class="slide" id="slide8">
+        <div class="slide-content">
+            <h1>Main Process</h1>
+            <ol>
+                <li><strong>Order Creation</strong>: Sender creates order with details (pickup/dropoff locations, deposit, value)</li>
+                <li><strong>Order Confirmation</strong>: Sender confirms order and selects a courier</li>
+                <li><strong>Order Acceptance</strong>: Courier accepts the order assignment</li>
+                <li><strong>Delivery Handover</strong>: Sender initiates delivery process by marking items as sent</li>
+                <li><strong>Transportation Begins</strong>: Courier confirms receipt of package and starts transport</li>
+            </ol>
+        </div>
+        <div class="slide-number">8</div>
+    </div>
+
+    <!-- Slide 9: Main Process Pt.2 -->
+    <div class="slide" id="slide9">
+        <div class="slide-content">
+            <h1>Main Process</h1>
+            <ol start="6">
+                <li><strong>Delivery Completion</strong>: Courier marks delivery as completed</li>
+                <li><strong>Delivery Confirmation</strong>: Receiver confirms receipt of package</li>
+                <li><strong>Order Finalization</strong>: Sender completes the order after verification</li>
+                <li><strong>Rating and Evaluation</strong>: Sender rates courier service (1-5 stars)</li>
+                <li><strong>Automatic Distribution</strong>: Platform automatically distributes payment based on predetermined ratios (80% courier, 17.5% bonus pool, 2.5% platform)</li>
+            </ol>
+        </div>
+        <div class="slide-number">9</div>
+    </div>
+
+    <!-- Slide 10: Process Flow Diagram -->
+    <div class="slide image-slide" id="slide10">
+        <div class="slide-content">
+            <h1>Logistics Process Flow</h1>
+            <img src="slide_pic/process.jpg" alt="Process Flow Diagram" />
+        </div>
+        <div class="slide-number">10</div>
+    </div>
+
+    <!-- Slide 11: Core Functional Modules -->
+    <div class="slide" id="slide11">
+        <div class="slide-content">
+            <h1>Core Functional Modules</h1>
+            <ol>
+                <li><strong>Order Management System</strong>
+                    <ul>
+                        <li>Creation, confirmation, modification, and cancellation of orders</li>
+                        <li>Multi-party participation in status confirmation</li>
+                        <li>Complete order status tracking</li>
+                    </ul>
+                </li>
+                <li><strong>Token Collateral System</strong>
+                    <ul>
+                        <li>ETH exchange for LogiToken</li>
+                        <li>Order locking mechanism to ensure transaction security</li>
+                    </ul>
+                </li>
+                <li><strong>Reputation Rating System</strong>
+                    <ul>
+                        <li>Ratings directly affect future reward distribution</li>
+                        <li>Immutable on-chain evaluation records</li>
+                    </ul>
+                </li>
+                <li><strong>Profit Distribution System</strong>
+                    <ul>
+                        <li>Automatic proportional distribution of order revenues</li>
+                        <li>Bonus pool to incentivize high-quality service</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+        <div class="slide-number">11</div>
+    </div>
+
+    <!-- Slide 12: Token and Deposit Mechanism Pt.1 -->
+    <div class="slide" id="slide12">
+        <div class="slide-content">
+            <h1>Token and Deposit Mechanism</h1>
+            <h2>LogiToken Design</h2>
+            <ul>
+                <li>Platform-specific token, 1:1 pegged to ETH</li>
+                <li>Dual management of free and locked states</li>
+                <li>Supports redemption for ETH at any time</li>
+            </ul>
+            <h2>Deposit Mechanism</h2>
+            <pre><code>function deposit() external payable {
+    token.mint(msg.sender, msg.value);
+}</code></pre>
+        </div>
+        <div class="slide-number">12</div>
+    </div>
+
+    <!-- Slide 13: Token and Deposit Mechanism Pt.2 -->
+    <div class="slide" id="slide13">
+        <div class="slide-content">
+            <h1>Token and Deposit Mechanism</h1>
+            <h2>Locking Function</h2>
+            <pre><code>function lockToken(address user, uint256 amount) external onlyPlatform {
+    token.lockToken(user, amount);
+}</code></pre>
+            <h2>Security Guarantees</h2>
+            <ul>
+                <li>Automatic token locking when creating orders</li>
+                <li>Automatic unlocking and distribution upon order completion</li>
+                <li>Refund mechanism for exceptional situations</li>
+            </ul>
+        </div>
+        <div class="slide-number">13</div>
+    </div>
+
+    <!-- Slide 14: Profit Distribution Mechanism -->
+    <div class="slide" id="slide14">
+        <div class="slide-content">
+            <h1>Profit Distribution Mechanism</h1>
+            <h2>Profit Ratio</h2>
+            <pre><code>COURIER_RATIO = 800;  // 80%
+BONUS_RATIO = 175;    // 17.5%
+OWNER_RATIO = 25;     // 2.5%</code></pre>
+            <h2>Bonus Pool Distribution</h2>
+            <ul>
+                <li>Reward distribution based on courier reputation ratings</li>
+                <li>Periodic (30-day) automatic triggering of distribution</li>
+                <li>Incentivizes high-quality service providers</li>
+            </ul>
+        </div>
+        <div class="slide-number">14</div>
+    </div>
+
+    <!-- Slide 15: Future Work -->
+    <div class="slide" id="slide15">
+        <div class="slide-content">
+            <h1>Future Work</h1>
+            <ol>
+                <li><strong>Encourage Community Users to Participate in Voting Governance</strong>
+                    <ul>
+                        <li>Implement decentralized governance mechanisms</li>
+                        <li>Community-driven platform upgrade decisions</li>
+                    </ul>
+                </li>
+                <li><strong>Improve Reputation Mechanism Oracle</strong>
+                    <ul>
+                        <li>Reputation assessment combining off-chain data</li>
+                        <li>More accurate credit score calculation</li>
+                    </ul>
+                </li>
+                <li><strong>Expand Collateral Pool Functionality</strong>
+                    <ul>
+                        <li>Support for diversified collateral assets</li>
+                        <li>Liquidity mining incentives</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+        <div class="slide-number">15</div>
+    </div>
+
+    <!-- Slide 16: Future Work Continued -->
+    <div class="slide" id="slide16">
+        <div class="slide-content">
+            <h1>Future Work</h1>
+            <ol start="4">
+                <li><strong>Develop Mobile Application</strong>
+                    <ul>
+                        <li>Provide more convenient user experience</li>
+                        <li>Real-time logistics tracking functionality</li>
+                    </ul>
+                </li>
+                <li><strong>Cross-chain Support</strong>
+                    <ul>
+                        <li>Connect multiple blockchain networks</li>
+                        <li>Enhance interoperability</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+        <div class="slide-number">16</div>
+    </div>
+
+    <!-- Slide 17: Thank You -->
+    <div class="slide" id="slide17">
+        <div class="slide-content">
+            <h1>Thank You</h1>
+            <h2>Questions & Discussion</h2>
+            <div class="footnote">Blockchain Logistics Platform</div>
+        </div>
+        <div class="slide-number">17</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let currentSlide = 1;
+            const totalSlides = document.querySelectorAll('.slide').length;
+            
+            function showSlide(slideNumber) {
+                document.querySelectorAll('.slide').forEach(slide => {
+                    slide.classList.remove('active');
+                });
+                document.getElementById('slide' + slideNumber).classList.add('active');
+            }
+            
+            // Keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+                    if (currentSlide < totalSlides) {
+                        currentSlide++;
+                        showSlide(currentSlide);
+                    }
+                } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                    if (currentSlide > 1) {
+                        currentSlide--;
+                        showSlide(currentSlide);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

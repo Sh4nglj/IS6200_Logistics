@@ -629,5 +629,4 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     function getCourierCredit(address _courier) external view returns (uint16) {
         return courierCreditMap[_courier];
     }
-    
 }
