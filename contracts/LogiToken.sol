@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./CollateralPool.sol";
 
+
 contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     // 状态变量
     CollateralPool public collateralPool;
@@ -42,8 +43,7 @@ contract LogiToken is ERC20Upgradeable, OwnableUpgradeable {
     }
 
     // 设置函数
-    // TODO: 应该为onlyOwner
-    function setCollateralPool(address _pool) external {
+    function setCollateralPool(address _pool) external onlyOwner {
         collateralPool = CollateralPool(_pool);
     }
 

@@ -74,17 +74,20 @@ contract CollateralPool {
      * @param amount 要赎回的代币数量
      */
     function redeem(uint256 amount) external {
+        address redeemer = msg.sender;
+        uint256 redeemAmount = amount;
+
         // 获取授权
-        token.approveRedeem(msg.sender);
+        token.approveRedeem(redeemer);
 
         // 调用代币合约的销毁函数
-        token.burnFrom(msg.sender, amount);
+        token.burnFrom(redeemer, redeemAmount);
+
+        emit Redeemed(redeemer, redeemAmount);
         
         // 执行ETH返还
-        (bool success, ) = msg.sender.call{value: amount}("");
+        (bool success, ) = redeemer.call{value: redeemAmount}("");
         require(success, "Transfer failed");
-
-        emit Redeemed(msg.sender, amount);
     }
 
     /**
@@ -104,6 +107,9 @@ contract CollateralPool {
         uint256 token_bonus = (amount * BONUS_RATIO) / TOTAL_RATIO;
         uint256 token_owner = (amount * OWNER_RATIO) / TOTAL_RATIO;
 
+        bonusPool += token_bonus;
+        emit BonusAdded(token_bonus, bonusPool);
+
         // 转给快递员直接收益部分
         token.transferFrom(sender, courier, token_courier);
         
@@ -112,9 +118,6 @@ contract CollateralPool {
         
         // 加入奖金池部分
         token.transferFrom(sender, address(this), token_bonus);
-        bonusPool += token_bonus;
-        
-        emit BonusAdded(token_bonus, bonusPool);
     }
 
     /**
@@ -144,35 +147,6 @@ contract CollateralPool {
     }
     
     /**
-     * @dev 向快递员分发奖金
-     * @param courier 快递员地址
-     * @param shareRatio 分成比例（18位精度）
-     *
-     * 根据计算出的比例，从奖金池中分配代币给快递员
-     * 此函数只能由平台合约调用，确保分配公平性
-     */
-    function distributeBonusTo(address courier, uint256 shareRatio) external onlyPlatform returns (uint256) {
-        require(courier != address(0), "Invalid courier address");
-        require(bonusPool > 0, "Bonus pool is empty");
-        
-        // 计算快递员应得奖金，使用18位精度
-        uint256 courierBonus = (bonusPool * shareRatio) / 1e18;
-        
-        // 确保有奖金可分
-        if (courierBonus > 0) {
-            // 从奖金池中减去
-            bonusPool -= courierBonus;
-            
-            // 转账给快递员
-            token.transfer(courier, courierBonus);
-            
-            emit BonusDistributed(courier, courierBonus, shareRatio);
-        }
-
-        return courierBonus;
-    }
-    
-    /**
      * @dev 允许所有者提取未分配的奖金池余额
      * 此函数用于分润周期结束后，处理奖金池中剩余的代币
      * 只有合约所有者可以调用此函数
@@ -184,5 +158,28 @@ contract CollateralPool {
         bonusPool = 0;
         
         token.transfer(owner, amountToWithdraw);
+    }
+
+    /**
+     * @dev 向快递员分发确切数量的奖金
+     * @param courier 快递员地址
+     * @param exactAmount 确切的奖金数量
+     * @return 实际分配的奖金数量
+     */
+    function distributeExactBonusTo(address courier, uint256 exactAmount) external onlyPlatform returns (uint256) {
+        require(courier != address(0), "Invalid courier address");
+        require(bonusPool >= exactAmount, "Insufficient bonus pool");
+        
+        if (exactAmount > 0) {
+            // 从奖金池中减去
+            bonusPool -= exactAmount;
+            
+            emit BonusDistributed(courier, exactAmount, 0); // 0表示不是基于比例
+
+            // 转账给快递员
+            token.transfer(courier, exactAmount);
+        }
+
+        return exactAmount;
     }
 }

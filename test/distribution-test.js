@@ -13,6 +13,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
+const { upgrades } = require("hardhat");
 
 describe("物流平台分成功能测试", function () {
   // 定义测试需要的变量
@@ -32,9 +33,11 @@ describe("物流平台分成功能测试", function () {
     // 获取测试账号
     [owner, sender1, sender2, courier1, courier2, courier3, receiver] = await ethers.getSigners();
     
-    // 部署 LogiToken 合约
+    // 部署 LogiToken 合约 - 使用可升级合约方式
     const LogiToken = await ethers.getContractFactory("LogiToken");
-    logiToken = await LogiToken.deploy();
+    logiToken = await upgrades.deployProxy(LogiToken, ["LogiToken", "LOGI"], {
+      initializer: "initialize",
+    });
     await logiToken.waitForDeployment();
     console.log("LogiToken 合约已部署:", logiToken.target);
     
@@ -56,6 +59,9 @@ describe("物流平台分成功能测试", function () {
     
     // 设置 LogiToken 的 CollateralPool
     await logiToken.setCollateralPool(collateralPool.target);
+    
+    // 转移 LogiToken 所有权给 CollateralPool
+    await logiToken.transferTokenOwnership(collateralPool.target);
     
     console.log("合约部署和初始化完成");
   });
@@ -123,8 +129,10 @@ describe("物流平台分成功能测试", function () {
       let receipt = await tx.wait();
       
       // 从事件中获取订单ID
-      const orderCreatedEvent = receipt.events.find(e => e.event === "OrderCreated");
-      const orderId = orderCreatedEvent.args.orderId;
+      const orderCreatedEvent = receipt.logs.find(log => 
+        log.fragment && log.fragment.name === "OrderCreated"
+      );
+      const orderId = orderCreatedEvent.args[0];
       orderIds.push(orderId);
       
       console.log(`订单${orderId}已创建`);
@@ -154,6 +162,11 @@ describe("物流平台分成功能测试", function () {
       console.log(`收货人已确认收货${orderId}`);
       
       // 步骤8：发送方完成订单
+
+      // 为 CollateralPool 授权使用发送方代币
+      await logiToken.connect(sender).approve(collateralPool.target, orderParam.orderValue);
+      console.log(`发送方已授权CollateralPool使用${orderParam.orderValue}代币`);
+
       await logisticPlatform.connect(sender).finishOrder(orderId);
       console.log(`订单${orderId}已完成`);
     }
@@ -223,7 +236,25 @@ describe("物流平台分成功能测试", function () {
     
     // 时间推进到可以分成的时间点（30天后）
     await time.increase(30 * 24 * 60 * 60);
+    // 获取每个快递员的信用评分
+    const credit1 = await logisticPlatform.getCourierCredit(courier1.address);
+    const credit2 = await logisticPlatform.getCourierCredit(courier2.address);
+    const credit3 = await logisticPlatform.getCourierCredit(courier3.address);
     
+    console.log("快递员信用评分:");
+    console.log("- 快递员1:", credit1.toString());
+    console.log("- 快递员2:", credit2.toString());
+    console.log("- 快递员3:", credit3.toString());
+    
+    // // 获取每个快递员的分成比例
+    // const ratio1 = await logisticPlatform.calculateCourierRatio(courier1.address);
+    // const ratio2 = await logisticPlatform.calculateCourierRatio(courier2.address);
+    // const ratio3 = await logisticPlatform.calculateCourierRatio(courier3.address);
+    
+    // console.log("快递员分成比例:");
+    // console.log("- 快递员1:", ethers.formatEther(ratio1));
+    // console.log("- 快递员2:", ethers.formatEther(ratio2));
+    // console.log("- 快递员3:", ethers.formatEther(ratio3));
     // 触发分成
     await logisticPlatform.connect(owner).distributeProfit();
     console.log("分成已触发");
@@ -239,9 +270,9 @@ describe("物流平台分成功能测试", function () {
     console.log("- 快递员3:", ethers.formatEther(afterBalance3), "ETH");
     
     // 计算增加的余额
-    const increase1 = afterBalance1.sub(beforeBalance1);
-    const increase2 = afterBalance2.sub(beforeBalance2);
-    const increase3 = afterBalance3.sub(beforeBalance3);
+    const increase1 = afterBalance1 - beforeBalance1;
+    const increase2 = afterBalance2 - beforeBalance2;
+    const increase3 = afterBalance3 - beforeBalance3;
     
     console.log("增加的余额:");
     console.log("- 快递员1:", ethers.formatEther(increase1), "ETH");

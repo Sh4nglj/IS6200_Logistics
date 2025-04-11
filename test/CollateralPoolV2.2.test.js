@@ -9,10 +9,13 @@ describe("CollateralPool - 基础功能测试", function () {
     [owner, user] = await ethers.getSigners();
 
     // 部署代币合约
+    // 获取LogiToken合约工厂实例
     const LogiToken = await ethers.getContractFactory("LogiToken");
+    // 使用可升级代理模式部署LogiToken合约，传入代币名称和符号
     token = await upgrades.deployProxy(LogiToken, ["LogiToken", "LOGI"], {
-        initializer: "initialize",
+        initializer: "initialize",  // 指定初始化函数名
     });
+    // 等待合约部署完成
     await token.waitForDeployment();
 
     token.on("DebugLog", (val0, val1, event) => {
