@@ -22,7 +22,7 @@ contract LogisticPlatform is Ownable, ErrorCodes {
     address[] private ratedCourierList;
 
     // 映射
-    mapping(uint256 => Order) public orders;
+    mapping(uint256 => Order) private orders;
     mapping(address => uint256) private courierCreditMap;
     
     // 枚举和结构体
