@@ -54,7 +54,6 @@
    ```
 
 #### 2. 接单和运输阶段
-
 **李师傅**:
 1. 浏览可接订单列表，查看订单详情
    ```javascript
@@ -96,7 +95,10 @@
    await logisticPlatformContract.confirmReceipt(orderId);
    ```
 
-2. 对李师傅的服务进行评价（9分/10分）
+**张先生**：
+
+1. 对李师傅的服务进行评价（9分/10分）
+
    ```javascript
    await logisticPlatformContract.rateOrder(orderId, 9, "服务很好，速度快，态度友善");
    ```
@@ -128,6 +130,7 @@ collateralPool.settle(sender, courier, amount);
 ## 场景二：大件物品配送与抵押担保
 
 ### 用户角色
+
 - **刘老板**：家具店主，需要配送一套家具
 - **赵师傅**：有货车的配送员
 - **孙先生**：家具购买者
@@ -183,7 +186,7 @@ collateralPool.settle(sender, courier, amount);
 
 正常完成运输流程，类似于场景一...
 
-#### 4. 争议处理案例
+#### 4. 争议处理案例（未来工作）
 
 假设在运输过程中，家具有轻微损坏：
 
@@ -201,15 +204,41 @@ collateralPool.settle(sender, courier, amount);
    await logisticPlatformContract.initiateDispute(orderId);
    ```
 
-**争议解决**:
-1. 平台介入调查（链下过程）
-2. 达成部分赔偿协议
-3. 执行调整后的结算
+**去中心化纠纷解决机制**:
+
+> **注意**: 这部分功能尚未实现，是未来工作的一部分。
+
+1. 无关用户可主动进入解决纠纷页面
    ```javascript
-   await logisticPlatformContract.resolveDispute(
-     orderId,
+   await logisticPlatformContract.enterDisputeResolutionPool();
+   ```
+
+2. 用户随机获得几个待解决的纠纷案例
+   ```javascript
+   const disputes = await logisticPlatformContract.getRandomDisputes(userAddress, 3);
+   ```
+
+3. 用户参与投票决定纠纷解决方案
+   ```javascript
+   await logisticPlatformContract.voteOnDispute(
+     disputeId,
+     VOTE_OPTION.PARTIAL_REFUND,
+     "物品损坏程度轻微，建议部分赔偿"
+   );
+   ```
+
+4. 用户获得少量LogiToken作为参与激励
+   ```javascript
+   // 合约内部执行
+   collateralPool.rewardDisputeResolver(resolver, incentiveAmount);
+   ```
+
+5. 达成共识后执行赔偿
+   ```javascript
+   await logisticPlatformContract.executeDisputeResolution(
+     disputeId,
      ethers.utils.parseEther("0.3"),  // 从配送员抵押中扣除的赔偿金
-     "双方同意赔偿方案"
+     "社区投票决议"
    );
    ```
 
@@ -219,6 +248,8 @@ collateralPool.settle(sender, courier, amount);
 - **多个发送方**：创建多个订单
 - **陈师傅**：高评分配送员
 - **多个接收方**：各订单的接收方
+- **张师傅**：新加入的配送员，评分中等
+- **李师傅**：活跃度低的配送员，评分高
 
 ### 详细流程
 
@@ -228,6 +259,14 @@ collateralPool.settle(sender, courier, amount);
 1. 在一个月内完成了20个订单
 2. 获得了大量高评分（平均9.5分）
 3. 累积了直接收益
+
+**张师傅**:
+1. 在一个月内完成了15个订单
+2. 获得了中等评分（平均7.5分）
+
+**李师傅**:
+1. 在一个月内只完成了3个订单
+2. 获得了高评分（平均9分）
 
 #### 2. 奖金池分配
 
@@ -242,30 +281,82 @@ collateralPool.settle(sender, courier, amount);
    }
    ```
 
-2. 根据配送员的评分和完成订单量计算分配比例
+2. 根据配送员的评分和完成订单量计算分配比例，体现活跃度和评分的双重激励
    ```solidity
    // 合约内部执行
    function calculateCourierShare(address courier) internal view returns (uint256) {
      uint256 completedOrders = getCompletedOrderCount(courier);
      uint256 avgRating = getAverageRating(courier);
      
-     // 计算权重...
-     return (completedOrders * avgRating * 10) / totalWeight;
+     // 计算活跃度系数
+     uint256 activityFactor = calculateActivityFactor(completedOrders);
+     
+     // 计算评分系数（评分超过阈值后增益递减）
+     uint256 ratingFactor = calculateRatingFactor(avgRating);
+     
+     // 综合权重计算，同时考虑活跃度和评分
+     uint256 courierWeight = activityFactor * ratingFactor;
+     
+     return (courierWeight * PRECISION_FACTOR) / totalWeight;
+   }
+   
+   // 计算活跃度系数
+   function calculateActivityFactor(uint256 orderCount) internal pure returns (uint256) {
+     // 活跃度低的配送员获得较低收益
+     if (orderCount < 5) {
+       return orderCount * 10;  // 线性增长
+     } 
+     // 活跃度中等的配送员
+     else if (orderCount < 15) {
+       return 50 + (orderCount - 5) * 15;  // 更快增长
+     } 
+     // 活跃度高的配送员获得最大收益
+     else {
+       return 200 + (orderCount - 15) * 20;  // 最高增长率
+     }
+   }
+   
+   // 计算评分系数（高分有收益上限，避免恶意刷分）
+   function calculateRatingFactor(uint256 avgRating) internal pure returns (uint256) {
+     // 基础分数计算
+     uint256 baseFactor = avgRating * avgRating;  // 评分的平方，使高分更有价值
+     
+     // 评分超过8.5后，增益递减，用以抑制恶意刷分
+     if (avgRating > 85) {  // 评分以0-100表示
+       return baseFactor - ((avgRating - 85) * (avgRating - 85) / 5);
+     }
+     
+     return baseFactor;
    }
    ```
 
-3. 陈师傅由于高评分和大量订单，获得了奖金池的较大份额
+3. 分配结果展示
+   - **陈师傅**：高活跃度(20单)和高评分(9.5分)，获得奖金池的65%
+   - **张师傅**：较高活跃度(15单)但中等评分(7.5分)，获得奖金池的25%
+   - **李师傅**：低活跃度(3单)但高评分(9分)，仅获得奖金池的10%
+
    ```solidity
    // 合约内部执行
-   uint256 bonus = (bonusPool * courierShare) / SHARE_BASE;
-   collateralPool.distributeExactBonusTo(courier, bonus);
+   // 陈师傅（活跃且高评分）
+   uint256 chenBonus = (bonusPool * 65) / 100;
+   collateralPool.distributeExactBonusTo(chenAddress, chenBonus);
+   
+   // 张师傅（活跃但中等评分）
+   uint256 zhangBonus = (bonusPool * 25) / 100;
+   collateralPool.distributeExactBonusTo(zhangAddress, zhangBonus);
+   
+   // 李师傅（不活跃但高评分）
+   uint256 liBonus = (bonusPool * 10) / 100;
+   collateralPool.distributeExactBonusTo(liAddress, liBonus);
    ```
 
-## 场景四：合约升级与治理
+## 场景四：合约升级与治理（未来工作）
+
+> **注意**: 这部分功能尚未实现，是未来工作的一部分。
 
 ### 用户角色
 - **平台管理员**：负责系统维护和升级
-- **平台用户**：持续使用平台服务
+- **平台用户**：持续使用平台服务和参与治理
 
 ### 详细流程
 
@@ -276,25 +367,23 @@ collateralPool.settle(sender, courier, amount);
 
 #### 2. 合约升级流程
 
-**平台管理员**:
-1. 开发新版本合约并进行全面测试
-2. 部署升级合约
+**未来治理机制**:
+1. 任何社区成员可以提交改进提案
    ```javascript
-   const LogiTokenV2 = await ethers.getContractFactory("LogiTokenV2");
-   const logiTokenV2 = await upgrades.upgradeProxy(logiToken.address, LogiTokenV2);
-   ```
-
-3. 验证升级后的功能正常运行
-   ```javascript
-   const newFeature = await logiTokenV2.newFeature();
-   console.log("New feature added:", newFeature);
-   ```
-
-4. 通知用户系统升级情况
-   ```javascript
-   await logisticPlatformContract.setSystemNotice(
-     "系统已升级到2.0版本，新增功能：更高效的奖励机制和批量订单处理"
+   await governanceContract.submitProposal(
+     newContractAddress,
+     "增加批量订单处理功能，提升系统效率"
    );
+   ```
+
+2. 社区成员使用LogiToken进行投票
+   ```javascript
+   await governanceContract.vote(proposalId, true); // 支持提案
+   ```
+
+3. 提案通过后，由治理合约执行升级
+   ```javascript
+   await governanceContract.executeProposal(proposalId);
    ```
 
 #### 3. 用户无缝体验

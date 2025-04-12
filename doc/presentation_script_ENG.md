@@ -1,13 +1,13 @@
 # Decentralized Logistics Platform Based on Ethereum
 ## Presentation Script (About 5 minutes)
 
-### 1. Introduction (30 seconds)
+### 1. Introduction
 
 Hello everyone! Today we will introduce our project — a decentralized logistics platform based on Ethereum blockchain.
 
 ---
 
-### 2. Project Background (45 seconds)
+### 2. Project Background
 
 #### 2.1 Current Industry Issues
 
@@ -32,7 +32,7 @@ The logistics industry is a rapidly growing market. Our solution has huge potent
 
 ---
 
-### 3. Blockchain Solution Goals (45 seconds)
+### 3. Blockchain Solution Goals
 
 Our blockchain solution has three core goals:
 
@@ -44,11 +44,12 @@ Our blockchain solution has three core goals:
 
 ---
 
-### 4. System Framework (50 seconds)
+### 4. System Framework
 
 Our system has of two layers:
 
-**Core Contract Layer**:
+~~**Core Contract Layer**:~~
+
 - LogisticPlatform is the main platform that manages the order process
 - CollateralPool stores pledged ETH and manages LogiToken
 - LogiToken is the platform token with locking/releasing mechanisms
@@ -63,31 +64,33 @@ All parties exchange information securely and transparently through the Ethereum
 
 ---
 
-### 5. Main Process (60 seconds)
+### 5. Main Process
 
 Our platform streamlines the entire logistics journey from order creation to payment settlement. 
 
 Each delivery status change requires confirmation from the relevant stakeholder. This multi-signature approach ensures accountability at every step.
 
-The entire workflow is tracked on the blockchain, providing transparency and security for all parties.
+---
+
+This is the whole process of an order, from creator to courier and receiver.
 
 ---
 
-### 6. Core Functional Modules (45 seconds)
+### 6. Core Functional Modules
 
 Our platform contains four core functional modules:
 
-1. Order Management System
+1. Order Management
 
-2. Token Collateral System
+2. Token Collateral
 
-3. Reputation Rating System
+3. Reputation Rating
 
-4. Profit Distribution System
+4. Profit Distribution
 
 ---
 
-### 7. Token and Deposit Mechanism (30 seconds)
+### 7. Token and Deposit Mechanism
 
 LogiToken is our platform-specific token. It is pegged 1:1 with ETH. It supports dual management of free and locked states. Users can redeem it for ETH at any time.
 
@@ -97,18 +100,19 @@ The platform automatically locks tokens when creating orders. It unlocks and dis
 
 ---
 
-### 8. Profit Distribution Mechanism (30 seconds)
+### 8. Profit Distribution Mechanism
 
-Our profit distribution ratio is:
-- Only 80% directly to couriers
-- 17.5% to the bonus pool
+- Only 80% delivery fee are directly gave to couriers
+- while 17.5% to the bonus pool
 - 2.5% to the platform
 
-The bonus pool distribution is based on courier reputation ratings, which means courier can get more or less than the origianl delivery fee depends on the behavior. Distribution is automatically triggered every 30 days. This incentivizes high-quality service providers and creates a positive cycle.
+The bonus pool distribution is based on courier reputation ratings, which means courier can get more or less than the origianl delivery fee depends on the behavior. We have a mechanism to encourage active users and prevent malicious score manipulation. 
+
+Distribution is automatically triggered every 30 days. This incentivizes high-quality service providers and creates a positive cycle.
 
 ---
 
-### 9. Future Work (30 seconds)
+### 9. Future Work
 
 In the future, we plan to:
 - Encourage community users to participate in voting governance
@@ -121,6 +125,6 @@ These initiatives will further enhance the platform's decentralized features. Th
 
 ---
 
-### 10. Conclusion (10 seconds)
+### 10. Conclusion
 
-Thank you for listening! Our decentralized logistics platform aims to solve current industry pain points. We want to create a fairer, more transparent, and efficient logistics ecosystem. Questions and discussion are welcome! 
+This is all of the slides, and we will have a short demonstration of our platform.

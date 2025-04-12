@@ -86,10 +86,68 @@ uint256 public constant OWNER_RATIO = 25;     // 2.5%
 #### 3.2 奖金池管理
 
 - 每笔订单的17.5%费用进入奖金池
-- 奖金池按照配送员的信誉评分定期分配
+- 奖金池按照配送员的信誉评分和活跃度定期分配
 - 分配过程透明且可验证
 
-#### 3.3 结算流程
+#### 3.3 活跃度与评分权重分配机制
+
+奖金池的分配基于以下加权算法：
+
+```solidity
+/**
+ * 计算快递员的分成分数
+ * @param _totalCredit 快递员累计评分
+ * @return 分成分数
+ * 
+ * rating为快递员在过去一个月中所有订单评分的累计总和，为uint8类型，最大为255。
+ * 
+ * 分成采用类似对数的曲线，实现低分快速增长，高分缓慢增长的效果：
+ * 1. 所有快递员都有基础分(100)保障，确保基本收益
+ * 2. 评分1-3区间：增长最快，激励新手和低评分快递员提高服务
+ * 3. 评分4-15区间：中等增长速度，是主要活跃区间
+ * 4. 评分16-50区间：增长逐渐放缓，避免头部快递员垄断奖金
+ * 5. 评分>50区间：增长最慢，高评分快递员获得稳定但有限的额外分成
+ */
+function calculateScore(uint256 _totalCredit) private pure returns (uint256) {
+    // 确保至少有1分，避免零分情况
+    if (_totalCredit == 0) {
+        _totalCredit = 1;
+    }
+    
+    // 基础分固定为100，确保最低收益保障
+    uint256 baseScore = 100;
+    uint256 logScore;
+    
+    // 分段模拟对数曲线，不同分段使用不同增长率
+    if (_totalCredit <= 3) {
+        // 1-3分区间：每分增加60分，激励快速提升
+        logScore = uint256(_totalCredit) * 60;
+    } else if (_totalCredit <= 15) {
+        // 4-15分区间：基础180分，每增加1分增加40分
+        logScore = 180 + (uint256(_totalCredit) - 3) * 40;
+    } else if (_totalCredit <= 50) {
+        // 16-50分区间：基础660分，每增加1分增加20分
+        logScore = 660 + (uint256(_totalCredit) - 15) * 20;
+    } else if (_totalCredit <= 100) {
+        // 51-100分区间：基础1360分，每增加1分增加10分
+        logScore = 1360 + (uint256(_totalCredit) - 50) * 10;
+    } else {
+        // >100分区间：基础1860分，每增加1分增加5分，增长最缓慢
+        logScore = 1860 + (uint256(_totalCredit) - 100) * 5;
+    }
+    
+    // 返回总分：基础分 + 对数增长分
+    return baseScore + logScore;
+}
+```
+
+这种设计确保：
+- 活跃度高且评分高的配送员获得最大收益
+- 活跃度低或评分低的配送员获得收益较少
+- 评分达到较高值后，继续提升分数获得的额外收益增长率降低，抑制恶意刷分行为
+- 鼓励配送员保持稳定的服务质量和活跃度
+
+#### 3.4 结算流程
 
 ```solidity
 function settle(address sender, address courier, uint256 amount) external onlyPlatform {
@@ -117,14 +175,45 @@ function settle(address sender, address courier, uint256 amount) external onlyPl
 #### 4.1 评分机制
 
 - 收货人在收到货物后可对配送员进行评分
-- 评分范围为1-10分
+- 评分范围为1-5分
 - 评分结果存储在区块链上，不可篡改
+- 系统采用加权平均算法，新的评分对总评分的影响会随着完成订单数量的增加而减小
 
-#### 4.2 信誉积累
+```solidity
+// 更新配送员评分
+function updateCourierRating(address courier, uint8 newRating) internal {
+    CourierInfo storage info = couriers[courier];
+    uint256 orderCount = info.completedOrders;
+    
+    // 加权平均算法，完成订单越多，单次评分影响越小
+    uint256 weight = calculateRatingWeight(orderCount);
+    uint256 newTotalRating = (info.rating * (1000 - weight) + newRating * weight) / 1000;
+    
+    info.rating = newTotalRating;
+    info.completedOrders += 1;
+    
+    emit CourierRatingUpdated(courier, newTotalRating, orderCount + 1);
+}
 
-- 配送员完成订单后累积信誉分数
-- 历史评分将影响未来的奖励分配比例
-- 通过信誉机制激励配送员提供高质量服务
+// 根据完成订单数计算评分权重
+function calculateRatingWeight(uint256 orderCount) internal pure returns (uint256) {
+    // 初始权重较高，随订单数增加而降低
+    if (orderCount < 10) return 200;       // 前10单，每单影响20%
+    if (orderCount < 50) return 100;       // 10-50单，每单影响10%
+    if (orderCount < 100) return 50;       // 50-100单，每单影响5%
+    return 20;                             // 100单以上，每单影响2%
+}
+```
+
+#### 4.2 信誉积累与奖励关联
+
+- 配送员完成订单后累积信誉分数和活跃度
+- 活跃度为滑动时间窗口内（如30天）完成的有效订单数量
+- 历史评分和活跃度共同决定奖金池分配比例
+- 活跃度和评分的计算采用非线性函数，以提供合理的激励机制：
+  - 活跃度低于阈值的配送员获得较少分润
+  - 评分超过特定阈值（如4.5分）后，继续提高评分获得的边际收益递减
+  - 这种设计既激励高质量服务，也抑制可能的恶意刷分行为
 
 #### 4.3 评价数据结构
 
